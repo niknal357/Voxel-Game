@@ -1,0 +1,18 @@
+[package]
+name = "Voxel-Game"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = "0.18.1"
+tokio = { version = "1", features = ["full"] }
+
+camera-voxel-loader = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
+gpu-voxel-data = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
+voxel-bvh = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
+voxel-data = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
+voxel-edit = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
+voxel-physics = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
+voxel-renderer = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
+voxel-sources = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
+voxel-streaming = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
