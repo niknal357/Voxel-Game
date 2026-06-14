@@ -8,7 +8,7 @@ use voxel_sources::{ChunkSource, GridKey, SourceHandle, VoxelSourcesAppExt};
 use voxel_streaming::{CHUNK_SIZE, GridStreaming, chunk_origin};
 
 const SPHERE_GRID: GridKey = GridKey(1);
-const SPHERE_RADIUS: i32 = 28;
+const SPHERE_RADIUS: i32 = 4096;
 const SPHERE_COST: u32 = 1;
 const SPHERE_COLOR: [u8; 4] = [80, 180, 255, 255];
 

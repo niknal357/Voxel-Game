@@ -8,7 +8,7 @@ pub fn setup_camera(mut commands: Commands) {
         Camera3d::default(),
         Hdr,
         Msaa::Off,
-        Transform::from_xyz(0.0, 16.0, 120.0),
+        Transform::from_xyz(0.0, 4200.0, 120.0),
         FlyCamera::default(),
     ));
 }

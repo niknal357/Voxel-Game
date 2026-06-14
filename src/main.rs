@@ -6,6 +6,7 @@ use std::time::Duration;
 
 use bevy::prelude::*;
 use bevy::window::{WindowPlugin, WindowResolution};
+use camera_voxel_loader::{CameraVoxelLoaderDefaultSettings, CameraVoxelLoaderSettings};
 
 use camera_controller::setup_camera;
 use game_plugins::GamePlugins;
@@ -27,6 +28,15 @@ fn main() {
         ..default()
     }))
     .insert_resource(Time::<Virtual>::from_max_delta(Duration::from_millis(16)))
+    .insert_resource(CameraVoxelLoaderDefaultSettings(
+        CameraVoxelLoaderSettings {
+            max_lod: 8,
+            near_radius_chunks: 5,
+            rings_per_lod: 3,
+            requests_per_frame: 16,
+            max_in_flight: 128,
+        },
+    ))
     .add_plugins(GamePlugins)
     .add_systems(Startup, setup_camera);
 
