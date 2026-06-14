@@ -7,7 +7,7 @@ use voxel_sources::VoxelSourcesPlugin;
 use voxel_streaming::VoxelStreamingPlugin;
 
 use crate::camera_controller::FlyCameraPlugin;
-use crate::sphere_source::ProceduralSpherePlugin;
+use crate::planet_source::ProceduralPlanetPlugin;
 
 pub struct GamePlugins;
 
@@ -17,7 +17,8 @@ impl PluginGroup for GamePlugins {
             .add(VoxelEditPlugin)
             .add(VoxelStreamingPlugin)
             .add(VoxelSourcesPlugin)
-            .add(ProceduralSpherePlugin)
+            // .add(ProceduralSpherePlugin)
+            .add(ProceduralPlanetPlugin)
             .add(CameraVoxelLoaderPlugin)
             .add(VoxelRendererPlugin)
             .add(FlyCameraPlugin)

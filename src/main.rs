@@ -1,6 +1,6 @@
 mod camera_controller;
 mod game_plugins;
-mod sphere_source;
+mod planet_source;
 
 use std::time::Duration;
 
