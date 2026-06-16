@@ -30,7 +30,7 @@ fn main() {
     .insert_resource(Time::<Virtual>::from_max_delta(Duration::from_millis(16)))
     .insert_resource(CameraVoxelLoaderDefaultSettings(
         CameraVoxelLoaderSettings {
-            max_lod: 3,
+            max_lod: 2,
             near_radius_chunks: 1,
             rings_per_lod: 1,
             requests_per_frame: 16,

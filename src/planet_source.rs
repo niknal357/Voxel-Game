@@ -1,15 +1,14 @@
 use std::f32::consts::PI;
 use std::sync::OnceLock;
-use std::thread;
 
 use bevy::math::I16Vec3;
 use bevy::prelude::*;
 use voxel_data::grid::Grid;
 use voxel_data::voxels::{Voxel, Voxels};
 use voxel_edit::GridEdits;
-use voxel_physics::{components::VoxelCollider, IsStatic, RigidBody};
+use voxel_physics::{IsStatic, RigidBody, components::VoxelCollider};
 use voxel_sources::{ChunkSource, GridKey, SourceHandle, VoxelSourcesAppExt};
-use voxel_streaming::{chunk_of, chunk_origin, GridStreaming, CHUNK_SIZE};
+use voxel_streaming::{CHUNK_SIZE, GridStreaming, chunk_of, chunk_origin};
 
 const PLANET_GRID_BASE: u64 = 10000;
 const PLANET_TILE_COUNT: usize = 1024;
@@ -24,7 +23,7 @@ const TILE_OUTWARD_HEIGHT: i32 = 128;
 const TILE_BOUND_PADDING: i32 = CHUNK_SIZE * 2;
 const VORONOI_NEIGHBORS: usize = 32;
 const TERRAIN_HEIGHT: f32 = 80.0;
-const MAX_INTERNAL_THREADS: usize = 4;
+const TILE_SHAPE_EPSILON: f32 = 0.001;
 
 #[derive(Clone)]
 struct Halfspace {
@@ -42,6 +41,8 @@ struct PlanetTile {
     axis_y: Vec3,
     halfspaces: Vec<Halfspace>,
     present_chunks: Vec<IVec3>,
+    present_min: IVec3,
+    present_max_exclusive: IVec3,
     tint: [u8; 3],
 }
 
@@ -148,10 +149,13 @@ fn build_planet_tiles() -> Vec<PlanetTile> {
         let mut neighbor_dots: Vec<(usize, f32)> = normals
             .iter()
             .enumerate()
-            .filter_map(|(other, &other_normal)| {
-                (other != index).then(|| (other, normal.dot(other_normal)))
-            })
+            .filter(|&(other, _)| other != index)
+            .map(|(other, &other_normal)| (other, normal.dot(other_normal)))
             .collect();
+        if neighbor_dots.len() > VORONOI_NEIGHBORS {
+            neighbor_dots.select_nth_unstable_by(VORONOI_NEIGHBORS, |a, b| b.1.total_cmp(&a.1));
+            neighbor_dots.truncate(VORONOI_NEIGHBORS);
+        }
         neighbor_dots.sort_by(|a, b| b.1.total_cmp(&a.1));
 
         // A spherical Voronoi edge between tile A and tile B is the plane where
@@ -166,6 +170,7 @@ fn build_planet_tiles() -> Vec<PlanetTile> {
             .map(|&(other, _)| voronoi_halfspace(normal, normals[other], axis_x, axis_y))
             .collect();
         let present_chunks = build_present_chunks(&halfspaces);
+        let (present_min, present_max_exclusive) = chunk_bounds(&present_chunks);
 
         tiles.push(PlanetTile {
             index,
@@ -175,6 +180,8 @@ fn build_planet_tiles() -> Vec<PlanetTile> {
             axis_y,
             halfspaces,
             present_chunks,
+            present_min,
+            present_max_exclusive,
             tint,
         });
     }
@@ -200,7 +207,12 @@ fn tile_index(grid: GridKey) -> Option<usize> {
     (index < PLANET_TILE_COUNT).then_some(index)
 }
 
-fn voronoi_halfspace(tile_normal: Vec3, neighbor_normal: Vec3, axis_x: Vec3, axis_y: Vec3) -> Halfspace {
+fn voronoi_halfspace(
+    tile_normal: Vec3,
+    neighbor_normal: Vec3,
+    axis_x: Vec3,
+    axis_y: Vec3,
+) -> Halfspace {
     let diff = tile_normal - neighbor_normal;
     Halfspace {
         normal: Vec3::new(diff.dot(axis_x), diff.dot(axis_y), diff.dot(tile_normal)),
@@ -237,6 +249,16 @@ fn build_present_chunks(halfspaces: &[Halfspace]) -> Vec<IVec3> {
     chunks.sort_by_key(|c| (c.x, c.y, c.z));
     chunks.dedup();
     chunks
+}
+
+fn chunk_bounds(chunks: &[IVec3]) -> (IVec3, IVec3) {
+    let Some((&first, rest)) = chunks.split_first() else {
+        return (IVec3::ZERO, IVec3::ZERO);
+    };
+    let (min, max) = rest.iter().fold((first, first), |(min, max), &chunk| {
+        (min.min(chunk), max.max(chunk))
+    });
+    (min, max + IVec3::ONE)
 }
 
 fn voronoi_xy_bounds(halfspaces: &[Halfspace]) -> (Vec2, Vec2) {
@@ -279,8 +301,8 @@ fn clipped_voronoi_polygon(halfspaces: &[Halfspace], z: f32) -> Vec<Vec2> {
             let b = polygon[(i + 1) % polygon.len()];
             let va = halfspace.normal.x * a.x + halfspace.normal.y * a.y + z_offset;
             let vb = halfspace.normal.x * b.x + halfspace.normal.y * b.y + z_offset;
-            let a_inside = va >= -0.001;
-            let b_inside = vb >= -0.001;
+            let a_inside = va >= -TILE_SHAPE_EPSILON;
+            let b_inside = vb >= -TILE_SHAPE_EPSILON;
 
             if a_inside && b_inside {
                 clipped.push(b);
@@ -298,16 +320,36 @@ fn clipped_voronoi_polygon(halfspaces: &[Halfspace], z: f32) -> Vec<Vec2> {
 }
 
 fn tile_has_chunk(tile: &PlanetTile, chunk: IVec3) -> bool {
-    tile.present_chunks.binary_search_by_key(&(chunk.x, chunk.y, chunk.z), |c| (c.x, c.y, c.z)).is_ok()
+    tile.present_chunks
+        .binary_search_by_key(&(chunk.x, chunk.y, chunk.z), |c| (c.x, c.y, c.z))
+        .is_ok()
 }
 
 fn tile_has_any_chunk_in_region(tile: &PlanetTile, min: IVec3, size: IVec3) -> bool {
     let max = min + size;
+    if !aabb_intersects(min, max, tile.present_min, tile.present_max_exclusive) {
+        return false;
+    }
+    if min.cmple(tile.present_min).all() && max.cmpge(tile.present_max_exclusive).all() {
+        return !tile.present_chunks.is_empty();
+    }
     tile.present_chunks.iter().any(|&chunk| {
-        chunk.x >= min.x && chunk.x < max.x
-            && chunk.y >= min.y && chunk.y < max.y
-            && chunk.z >= min.z && chunk.z < max.z
+        chunk.x >= min.x
+            && chunk.x < max.x
+            && chunk.y >= min.y
+            && chunk.y < max.y
+            && chunk.z >= min.z
+            && chunk.z < max.z
     })
+}
+
+fn aabb_intersects(a_min: IVec3, a_max: IVec3, b_min: IVec3, b_max: IVec3) -> bool {
+    a_min.x < b_max.x
+        && a_max.x > b_min.x
+        && a_min.y < b_max.y
+        && a_max.y > b_min.y
+        && a_min.z < b_max.z
+        && a_max.z > b_min.z
 }
 
 fn chunk_intersects_tile_shape(halfspaces: &[Halfspace], chunk: IVec3) -> bool {
@@ -330,77 +372,47 @@ fn chunk_intersects_tile_shape(halfspaces: &[Halfspace], chunk: IVec3) -> bool {
     })
 }
 
-fn local_in_tile_shape(tile: &PlanetTile, local: Vec3) -> bool {
-    local.z >= -TILE_INWARD_DEPTH as f32
-        && local.z < TILE_OUTWARD_HEIGHT as f32
-        && tile.halfspaces.iter().all(|h| h.normal.dot(local) + h.offset >= -0.001)
-}
-
 fn build_planet_chunk(grid: GridKey, chunk: IVec3) -> Option<Voxels> {
     let tile = &planet_tiles()[tile_index(grid)?];
     let origin = chunk_origin(chunk);
-
-    let points = parallel_z_collect(CHUNK_SIZE, |z0, z1| {
-        let mut points = Vec::new();
-        for z in z0..z1 {
-            for y in 0..CHUNK_SIZE {
-                for x in 0..CHUNK_SIZE {
-                    let local_chunk = IVec3::new(x, y, z);
-                    let local_grid = origin + local_chunk;
-                    let sample = local_grid.as_vec3() + Vec3::splat(0.5);
-                    if !local_in_tile_shape(tile, sample) {
-                        continue;
-                    }
-                    let planet_point = local_to_planet(tile, sample);
-                    if let Some(voxel) = planet_voxel(tile, planet_point, true) {
-                        points.push((local_chunk.as_i16vec3(), voxel));
-                    }
-                }
-            }
-        }
-        points
-    });
-
-    if points.is_empty() {
-        None
-    } else {
-        let mut voxels = Voxels::new();
-        voxels.add_voxels(&points);
-        Some(voxels)
-    }
+    let mut points = Vec::new();
+    append_planet_samples(
+        tile,
+        origin,
+        IVec3::splat(CHUNK_SIZE),
+        1,
+        0,
+        true,
+        &mut points,
+    );
+    points_to_voxels(points)
 }
 
-fn build_planet_lod_region(grid: GridKey, min_chunk: IVec3, size_chunks: IVec3, lod: f32) -> Option<Voxels> {
+fn build_planet_lod_region(
+    grid: GridKey,
+    min_chunk: IVec3,
+    size_chunks: IVec3,
+    lod: f32,
+) -> Option<Voxels> {
     let tile = &planet_tiles()[tile_index(grid)?];
     let step = 1i32 << lod.max(0.0).floor() as u32;
     let sample_offset = step / 2;
     let extent = (size_chunks * CHUNK_SIZE) / step;
     let origin = chunk_origin(min_chunk);
-    let max_source = size_chunks * CHUNK_SIZE - IVec3::ONE;
+    let mut points = Vec::new();
+    append_planet_samples(
+        tile,
+        origin,
+        extent,
+        step,
+        sample_offset,
+        false,
+        &mut points,
+    );
+    points_to_voxels(points)
+}
 
-    let points = parallel_z_collect(extent.z, |z0, z1| {
-        let mut points = Vec::new();
-        for z in z0..z1 {
-            for y in 0..extent.y {
-                for x in 0..extent.x {
-                    let coarse = IVec3::new(x, y, z);
-                    let sample = (coarse * step + IVec3::splat(sample_offset)).min(max_source);
-                    let local_grid = origin + sample;
-                    let local_sample = local_grid.as_vec3() + Vec3::splat(0.5);
-                    if !local_in_tile_shape(tile, local_sample) {
-                        continue;
-                    }
-
-                    let planet_point = local_to_planet(tile, local_sample);
-                    if let Some(voxel) = planet_voxel(tile, planet_point, false) {
-                        points.push((coarse.as_i16vec3(), voxel));
-                    }
-                }
-            }
-        }
-        points
-    });
-
+fn points_to_voxels(points: Vec<(I16Vec3, Voxel)>) -> Option<Voxels> {
     if points.is_empty() {
         None
     } else {
@@ -410,72 +422,111 @@ fn build_planet_lod_region(grid: GridKey, min_chunk: IVec3, size_chunks: IVec3, 
     }
 }
 
-fn parallel_z_collect<F>(z_count: i32, job: F) -> Vec<(I16Vec3, Voxel)>
-where
-    F: Fn(i32, i32) -> Vec<(I16Vec3, Voxel)> + Sync,
-{
-    let worker_count = thread::available_parallelism()
-        .map(|n| n.get())
-        .unwrap_or(1)
-        .min(MAX_INTERNAL_THREADS)
-        .min(z_count.max(1) as usize);
+fn append_planet_samples(
+    tile: &PlanetTile,
+    origin: IVec3,
+    extent: IVec3,
+    step: i32,
+    sample_offset: i32,
+    full_mass: bool,
+    points: &mut Vec<(I16Vec3, Voxel)>,
+) {
+    let mass = if full_mass { 100 } else { 0 };
+    let step_f = step as f32;
+    let sample_base_z = origin.z as f32 + sample_offset as f32 + 0.5;
 
-    if worker_count <= 1 || z_count <= 1 {
-        return job(0, z_count);
+    for y in 0..extent.y {
+        let sample_y = (origin.y + y * step + sample_offset) as f32 + 0.5;
+        for x in 0..extent.x {
+            let sample_x = (origin.x + x * step + sample_offset) as f32 + 0.5;
+            let Some((z0, z1)) =
+                column_shape_z_range(tile, sample_x, sample_y, sample_base_z, extent.z, step_f)
+            else {
+                continue;
+            };
+
+            let lateral_len_sq = sample_x * sample_x + sample_y * sample_y;
+
+            for z in z0..z1 {
+                let sample_z = sample_base_z + z as f32 * step_f;
+                let radial = PLANET_RADIUS + sample_z;
+                let radius = (lateral_len_sq + radial * radial).sqrt();
+                if radius <= 1e-5 {
+                    continue;
+                }
+
+                // Keep terrain sampling exact per voxel.  Fixed tangent-grid x/y
+                // columns are not radial columns: as z changes, the normalized
+                // planet direction changes too, so latitude/longitude-dependent
+                // terrain must be re-evaluated for each z sample.
+                let unit = local_unit_to_planet(tile, sample_x, sample_y, radial, radius);
+                let terrain = terrain_sample(unit);
+                let altitude = radius - PLANET_RADIUS;
+                if altitude > terrain.height {
+                    continue;
+                }
+
+                points.push((
+                    IVec3::new(x, y, z).as_i16vec3(),
+                    Voxel {
+                        color: terrain_color(tile, terrain, altitude),
+                        mass,
+                    },
+                ));
+            }
+        }
+    }
+}
+
+fn column_shape_z_range(
+    tile: &PlanetTile,
+    sample_x: f32,
+    sample_y: f32,
+    sample_base_z: f32,
+    extent_z: i32,
+    step: f32,
+) -> Option<(i32, i32)> {
+    let mut min_sample_z = -TILE_INWARD_DEPTH as f32;
+    let mut max_sample_z = TILE_OUTWARD_HEIGHT as f32;
+
+    for h in &tile.halfspaces {
+        let base = h.normal.x * sample_x + h.normal.y * sample_y + h.offset;
+        if h.normal.z > 1e-6 {
+            min_sample_z = min_sample_z.max((-TILE_SHAPE_EPSILON - base) / h.normal.z);
+        } else if h.normal.z < -1e-6 {
+            max_sample_z = max_sample_z.min((-TILE_SHAPE_EPSILON - base) / h.normal.z);
+        } else if base < -TILE_SHAPE_EPSILON {
+            return None;
+        }
     }
 
-    thread::scope(|scope| {
-        let mut handles = Vec::with_capacity(worker_count);
-        for worker in 0..worker_count {
-            let z0 = (z_count * worker as i32) / worker_count as i32;
-            let z1 = (z_count * (worker + 1) as i32) / worker_count as i32;
-            let job_ref = &job;
-            handles.push(scope.spawn(move || job_ref(z0, z1)));
-        }
-
-        let mut out = Vec::new();
-        for handle in handles {
-            out.extend(handle.join().unwrap());
-        }
-        out
-    })
-}
-
-fn local_to_planet(tile: &PlanetTile, local: Vec3) -> Vec3 {
-    tile.origin + tile.axis_x * local.x + tile.axis_y * local.y + tile.normal * local.z
-}
-
-fn planet_voxel(tile: &PlanetTile, planet_point: Vec3, full_mass: bool) -> Option<Voxel> {
-    let radius = planet_point.length();
-    if radius <= 1e-5 {
+    if min_sample_z >= max_sample_z {
         return None;
     }
 
-    let unit = planet_point / radius;
+    let z0 = (((min_sample_z - sample_base_z) / step).ceil() as i32).clamp(0, extent_z);
+    let z1 = (((max_sample_z - sample_base_z) / step).ceil() as i32).clamp(0, extent_z);
+    (z0 < z1).then_some((z0, z1))
+}
+
+fn local_unit_to_planet(tile: &PlanetTile, x: f32, y: f32, radial: f32, radius: f32) -> Vec3 {
+    (tile.axis_x * x + tile.axis_y * y + tile.normal * radial) / radius
+}
+
+#[derive(Clone, Copy)]
+struct TerrainSample {
+    height: f32,
+    shade: f32,
+}
+
+fn terrain_sample(unit: Vec3) -> TerrainSample {
     let height = terrain_height(unit);
-    let altitude = radius - PLANET_RADIUS;
-    if altitude > height {
-        return None;
+    let slope = 1.0 - unit.dot(Vec3::Y).abs() * 0.15;
+    let shade_raw = (0.78 + 0.22 * value_noise(unit * 45.0)).clamp(0.58, 1.0) * slope;
+    TerrainSample {
+        height,
+        shade: quantize_float(shade_raw.clamp(0.55, 1.0), 10),
     }
-
-    if !tile_owns_point(tile, planet_point) {
-        return None;
-    }
-
-    Some(Voxel {
-        color: terrain_color(tile, unit, altitude, height),
-        mass: if full_mass { 100 } else { 0 },
-    })
-}
-
-fn tile_owns_point(tile: &PlanetTile, planet_point: Vec3) -> bool {
-    let from_origin = planet_point - tile.origin;
-    let local = Vec3::new(
-        from_origin.dot(tile.axis_x),
-        from_origin.dot(tile.axis_y),
-        from_origin.dot(tile.normal),
-    );
-    local_in_tile_shape(tile, local)
 }
 
 fn terrain_height(unit: Vec3) -> f32 {
@@ -485,15 +536,16 @@ fn terrain_height(unit: Vec3) -> f32 {
     12.0 + continents * 34.0 + hills * 14.0 + ridges * TERRAIN_HEIGHT
 }
 
-fn terrain_color(tile: &PlanetTile, unit: Vec3, altitude: f32, height: f32) -> [u8; 4] {
+fn terrain_color(tile: &PlanetTile, column: TerrainSample, altitude: f32) -> [u8; 4] {
     // The GPU tree only has 254 palette entries per uploaded voxel tree.  Keep
     // the procedural planet material-driven: 4 materials * 10 shade bands = at
     // most 40 colors per tile/chunk instead of one unique color per voxel.
-    let material = if height > 72.0 || altitude > height - 8.0 && height > 55.0 {
+    let material = if column.height > 72.0 || altitude > column.height - 8.0 && column.height > 55.0
+    {
         0
-    } else if height > 38.0 {
+    } else if column.height > 38.0 {
         1
-    } else if height < -4.0 {
+    } else if column.height < -4.0 {
         2
     } else {
         3
@@ -506,12 +558,12 @@ fn terrain_color(tile: &PlanetTile, unit: Vec3, altitude: f32, height: f32) -> [
         _ => Vec3::new(68.0, 140.0, 72.0),
     };
 
-    let slope = 1.0 - unit.dot(Vec3::Y).abs() * 0.15;
-    let shade_raw = (0.78 + 0.22 * value_noise(unit * 45.0)).clamp(0.58, 1.0) * slope;
-    let shade = quantize_float(shade_raw.clamp(0.55, 1.0), 10);
-
-    let tint = Vec3::new(tile.tint[0] as f32, tile.tint[1] as f32, tile.tint[2] as f32);
-    let color = (base * 0.88 + tint * 0.12) * shade;
+    let tint = Vec3::new(
+        tile.tint[0] as f32,
+        tile.tint[1] as f32,
+        tile.tint[2] as f32,
+    );
+    let color = (base * 0.88 + tint * 0.12) * column.shade;
     [
         quantize_u8(color.x.clamp(0.0, 255.0) as u8, 32),
         quantize_u8(color.y.clamp(0.0, 255.0) as u8, 32),
@@ -578,7 +630,11 @@ fn value_noise(p: Vec3) -> f32 {
     let x00 = lerp(hash3(ix, iy, iz), hash3(ix + 1, iy, iz), u.x);
     let x10 = lerp(hash3(ix, iy + 1, iz), hash3(ix + 1, iy + 1, iz), u.x);
     let x01 = lerp(hash3(ix, iy, iz + 1), hash3(ix + 1, iy, iz + 1), u.x);
-    let x11 = lerp(hash3(ix, iy + 1, iz + 1), hash3(ix + 1, iy + 1, iz + 1), u.x);
+    let x11 = lerp(
+        hash3(ix, iy + 1, iz + 1),
+        hash3(ix + 1, iy + 1, iz + 1),
+        u.x,
+    );
     let y0 = lerp(x00, x10, u.y);
     let y1 = lerp(x01, x11, u.y);
     lerp(y0, y1, u.z)
