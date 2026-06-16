@@ -1,0 +1,150 @@
+use bevy::math::I16Vec3;
+use bevy::prelude::*;
+use voxel_data::voxels::{Voxel, Voxels};
+use voxel_sources::GridKey;
+use voxel_streaming::{CHUNK_SIZE, chunk_origin};
+
+use super::config::{PLANET_RADIUS, TILE_INWARD_DEPTH, TILE_OUTWARD_HEIGHT, TILE_SHAPE_EPSILON};
+use super::terrain::{terrain_color, terrain_sample};
+use super::tiles::{PlanetTile, planet_tiles, tile_index};
+
+pub(super) fn build_planet_chunk(grid: GridKey, chunk: IVec3) -> Option<Voxels> {
+    let tile = &planet_tiles()[tile_index(grid)?];
+    let origin = chunk_origin(chunk);
+    let mut points = Vec::new();
+    append_planet_samples(
+        tile,
+        origin,
+        IVec3::splat(CHUNK_SIZE),
+        1,
+        0,
+        true,
+        &mut points,
+    );
+    points_to_voxels(points)
+}
+
+pub(super) fn build_planet_lod_region(
+    grid: GridKey,
+    min_chunk: IVec3,
+    size_chunks: IVec3,
+    lod: f32,
+) -> Option<Voxels> {
+    let tile = &planet_tiles()[tile_index(grid)?];
+    let step = 1i32 << lod.max(0.0).floor() as u32;
+    let sample_offset = step / 2;
+    let extent = (size_chunks * CHUNK_SIZE) / step;
+    let origin = chunk_origin(min_chunk);
+    let mut points = Vec::new();
+    append_planet_samples(
+        tile,
+        origin,
+        extent,
+        step,
+        sample_offset,
+        false,
+        &mut points,
+    );
+    points_to_voxels(points)
+}
+
+fn points_to_voxels(points: Vec<(I16Vec3, Voxel)>) -> Option<Voxels> {
+    if points.is_empty() {
+        None
+    } else {
+        let mut voxels = Voxels::new();
+        voxels.add_voxels(&points);
+        Some(voxels)
+    }
+}
+
+fn append_planet_samples(
+    tile: &PlanetTile,
+    origin: IVec3,
+    extent: IVec3,
+    step: i32,
+    sample_offset: i32,
+    full_mass: bool,
+    points: &mut Vec<(I16Vec3, Voxel)>,
+) {
+    let mass = if full_mass { 100 } else { 0 };
+    let step_f = step as f32;
+    let sample_base_z = origin.z as f32 + sample_offset as f32 + 0.5;
+
+    for y in 0..extent.y {
+        let sample_y = (origin.y + y * step + sample_offset) as f32 + 0.5;
+        for x in 0..extent.x {
+            let sample_x = (origin.x + x * step + sample_offset) as f32 + 0.5;
+            let Some((z0, z1)) =
+                column_shape_z_range(tile, sample_x, sample_y, sample_base_z, extent.z, step_f)
+            else {
+                continue;
+            };
+
+            let lateral_len_sq = sample_x * sample_x + sample_y * sample_y;
+
+            for z in z0..z1 {
+                let sample_z = sample_base_z + z as f32 * step_f;
+                let radial = PLANET_RADIUS + sample_z;
+                let radius = (lateral_len_sq + radial * radial).sqrt();
+                if radius <= 1e-5 {
+                    continue;
+                }
+
+                // Keep terrain sampling exact per voxel. Fixed tangent-grid x/y
+                // columns are not radial columns: as z changes, the normalized
+                // planet direction changes too, so latitude/longitude-dependent
+                // terrain must be re-evaluated for each z sample.
+                let unit = local_unit_to_planet(tile, sample_x, sample_y, radial, radius);
+                let terrain = terrain_sample(unit);
+                let altitude = radius - PLANET_RADIUS;
+                if altitude > terrain.height {
+                    continue;
+                }
+
+                points.push((
+                    IVec3::new(x, y, z).as_i16vec3(),
+                    Voxel {
+                        color: terrain_color(tile.tint, terrain, altitude),
+                        mass,
+                    },
+                ));
+            }
+        }
+    }
+}
+
+fn column_shape_z_range(
+    tile: &PlanetTile,
+    sample_x: f32,
+    sample_y: f32,
+    sample_base_z: f32,
+    extent_z: i32,
+    step: f32,
+) -> Option<(i32, i32)> {
+    let mut min_sample_z = -TILE_INWARD_DEPTH as f32;
+    let mut max_sample_z = TILE_OUTWARD_HEIGHT as f32;
+
+    for h in &tile.halfspaces {
+        let base = h.normal.x * sample_x + h.normal.y * sample_y + h.offset;
+        if h.normal.z > 1e-6 {
+            min_sample_z = min_sample_z.max((-TILE_SHAPE_EPSILON - base) / h.normal.z);
+        } else if h.normal.z < -1e-6 {
+            max_sample_z = max_sample_z.min((-TILE_SHAPE_EPSILON - base) / h.normal.z);
+        } else if base < -TILE_SHAPE_EPSILON {
+            return None;
+        }
+    }
+
+    if min_sample_z >= max_sample_z {
+        return None;
+    }
+
+    let z0 = (((min_sample_z - sample_base_z) / step).ceil() as i32).clamp(0, extent_z);
+    let z1 = (((max_sample_z - sample_base_z) / step).ceil() as i32).clamp(0, extent_z);
+    (z0 < z1).then_some((z0, z1))
+}
+
+fn local_unit_to_planet(tile: &PlanetTile, x: f32, y: f32, radial: f32, radius: f32) -> Vec3 {
+    (tile.axis_x * x + tile.axis_y * y + tile.normal * radial) / radius
+}
