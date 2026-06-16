@@ -9,7 +9,6 @@ tokio = { version = "1", features = ["full"] }
 
 camera-voxel-loader = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
 gpu-voxel-data = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
-voxel-bvh = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
 voxel-data = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
 voxel-edit = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
 voxel-physics = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }

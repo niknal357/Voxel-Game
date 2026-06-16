@@ -31,8 +31,8 @@ fn main() {
     .insert_resource(CameraVoxelLoaderDefaultSettings(
         CameraVoxelLoaderSettings {
             max_lod: 3,
-            near_radius_chunks: 3,
-            rings_per_lod: 2,
+            near_radius_chunks: 1,
+            rings_per_lod: 1,
             requests_per_frame: 16,
             max_in_flight: 128,
         },

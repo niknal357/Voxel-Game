@@ -8,6 +8,7 @@ use voxel_streaming::VoxelStreamingPlugin;
 
 use crate::camera_controller::FlyCameraPlugin;
 use crate::planet_source::ProceduralPlanetPlugin;
+// use crate::sphere_source::ProceduralSpherePlugin;
 
 pub struct GamePlugins;
 
