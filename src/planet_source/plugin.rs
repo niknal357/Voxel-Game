@@ -18,8 +18,6 @@ pub struct ProceduralPlanetPlugin;
 
 impl Plugin for ProceduralPlanetPlugin {
     fn build(&self, app: &mut App) {
-        // Force the Fibonacci sphere and neighbor lists to be built once on the
-        // main thread instead of the first streaming worker that asks for a chunk.
         let _ = planet_tiles();
         app.register_source(ProceduralPlanetSource::default())
             .add_systems(Startup, spawn_planet);

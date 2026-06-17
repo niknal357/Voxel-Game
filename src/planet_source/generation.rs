@@ -117,10 +117,6 @@ fn append_planet_samples(
                     continue;
                 }
 
-                // Keep terrain sampling exact per voxel. Fixed tangent-grid x/y
-                // columns are not radial columns: as z changes, the normalized
-                // planet direction changes too, so latitude/longitude-dependent
-                // terrain must be re-evaluated for each z sample.
                 let unit = local_unit_to_planet(tile, sample_x, sample_y, radial, radius);
                 terrain_samples += 1;
                 let terrain = terrain_sample(unit);
