@@ -3,9 +3,26 @@ name = "Voxel-Game"
 version = "0.1.0"
 edition = "2024"
 
+[features]
+default = []
+tracy = [
+    "dep:tracing-tracy",
+    "bevy/debug",
+    "bevy/trace",
+    "voxel-data/tracy",
+    "voxel-edit/tracy",
+    "voxel-physics/tracy",
+    "gpu-voxel-data/tracy",
+    "voxel-sources/tracy",
+    "voxel-streaming/tracy",
+    "tracy-client/enable",
+]
+
 [dependencies]
 bevy = "0.18.1"
 tokio = { version = "1", features = ["full"] }
+tracing-tracy = { version = "0.11", default-features = false, features = ["enable", "broadcast"], optional = true }
+tracy-client = { version = "0.18.4", default-features = false }
 
 camera-voxel-loader = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
 gpu-voxel-data = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }

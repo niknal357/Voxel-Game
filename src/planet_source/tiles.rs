@@ -2,6 +2,7 @@ use std::f32::consts::PI;
 use std::sync::OnceLock;
 
 use bevy::prelude::*;
+use tracy_client::span;
 use voxel_sources::GridKey;
 use voxel_streaming::{CHUNK_SIZE, chunk_of, chunk_origin};
 
@@ -38,6 +39,8 @@ pub(super) fn planet_tiles() -> &'static [PlanetTile] {
 }
 
 fn build_planet_tiles() -> Vec<PlanetTile> {
+    let _zone = span!("planet build tile cache");
+    tracy_client::plot!("planet tile count", PLANET_TILE_COUNT as f64);
     let normals: Vec<Vec3> = (0..PLANET_TILE_COUNT)
         .map(|index| fibonacci_sphere_point(index, PLANET_TILE_COUNT))
         .collect();
@@ -92,6 +95,13 @@ fn build_planet_tiles() -> Vec<PlanetTile> {
         });
     }
 
+    tracy_client::plot!(
+        "planet present chunks total",
+        tiles
+            .iter()
+            .map(|tile| tile.present_chunks.len())
+            .sum::<usize>() as f64
+    );
     tiles
 }
 

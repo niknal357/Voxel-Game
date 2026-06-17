@@ -1,6 +1,7 @@
 use std::sync::OnceLock;
 
 use bevy::prelude::*;
+use tracy_client::span;
 use voxel_data::grid::Grid;
 use voxel_edit::GridEdits;
 use voxel_physics::{IsStatic, RigidBody, components::VoxelCollider};
@@ -41,8 +42,10 @@ impl ChunkSource for ProceduralPlanetSource {
     }
 
     fn request_load(&self, grid: GridKey, chunk: IVec3) {
+        let _zone = span!("planet source request_load chunk");
         let voxels = build_planet_chunk(grid, chunk);
         if let Some(handle) = self.handle.get() {
+            let _zone = span!("planet source publish chunk");
             handle.loaded(grid, chunk, voxels);
         }
     }
@@ -53,8 +56,11 @@ impl ChunkSource for ProceduralPlanetSource {
     }
 
     fn request_load_lod(&self, grid: GridKey, min: IVec3, size: IVec3, lod: f32) {
+        let _zone = span!("planet source request_load_lod");
+        tracy_client::plot!("planet lod level", lod as f64);
         let voxels = build_planet_lod_region(grid, min, size, lod);
         if let Some(handle) = self.handle.get() {
+            let _zone = span!("planet source publish lod");
             handle.loaded_lod(grid, min, size, lod, voxels);
         }
     }
