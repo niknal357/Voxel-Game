@@ -5665,11 +5665,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "voxel-data"
 version = "0.1.0"
-<<<<<<< HEAD
 source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#a156ac7ae3cf889db971e68554af18fe3110aeb1"
-=======
-source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#136b8c0a189b8de22c0a2d22789ef1dd19a4c525"
->>>>>>> f4681ea10596e72c9578968b2a438959782c8fca
 dependencies = [
  "async-priority-queue",
  "bevy",
@@ -5684,11 +5680,7 @@ dependencies = [
 [[package]]
 name = "voxel-edit"
 version = "0.1.0"
-<<<<<<< HEAD
 source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#a156ac7ae3cf889db971e68554af18fe3110aeb1"
-=======
-source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#136b8c0a189b8de22c0a2d22789ef1dd19a4c525"
->>>>>>> f4681ea10596e72c9578968b2a438959782c8fca
 dependencies = [
  "bevy",
  "bevy-trait-query",
@@ -5702,21 +5694,13 @@ dependencies = [
 [[package]]
 name = "voxel-gpu"
 version = "0.1.0"
-<<<<<<< HEAD
 source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#a156ac7ae3cf889db971e68554af18fe3110aeb1"
-=======
-source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#136b8c0a189b8de22c0a2d22789ef1dd19a4c525"
->>>>>>> f4681ea10596e72c9578968b2a438959782c8fca
 dependencies = [
  "bevy",
  "bytemuck",
  "clone_cell",
  "getrandom 0.3.4",
-<<<<<<< HEAD
  "getrandom 0.4.3",
-=======
- "getrandom 0.4.2",
->>>>>>> f4681ea10596e72c9578968b2a438959782c8fca
  "log",
  "num",
  "parry3d",
@@ -5729,11 +5713,7 @@ dependencies = [
 [[package]]
 name = "voxel-physics"
 version = "0.1.0"
-<<<<<<< HEAD
 source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#a156ac7ae3cf889db971e68554af18fe3110aeb1"
-=======
-source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#136b8c0a189b8de22c0a2d22789ef1dd19a4c525"
->>>>>>> f4681ea10596e72c9578968b2a438959782c8fca
 dependencies = [
  "bevy",
  "getrandom 0.3.4",
@@ -5747,21 +5727,13 @@ dependencies = [
 [[package]]
 name = "voxel-renderer"
 version = "0.1.0"
-<<<<<<< HEAD
 source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#a156ac7ae3cf889db971e68554af18fe3110aeb1"
-=======
-source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#136b8c0a189b8de22c0a2d22789ef1dd19a4c525"
->>>>>>> f4681ea10596e72c9578968b2a438959782c8fca
 dependencies = [
  "anyhow",
  "bevy",
  "bytemuck",
  "getrandom 0.3.4",
-<<<<<<< HEAD
  "getrandom 0.4.3",
-=======
- "getrandom 0.4.2",
->>>>>>> f4681ea10596e72c9578968b2a438959782c8fca
  "log",
  "voxel-data",
  "voxel-gpu",
@@ -5772,11 +5744,7 @@ dependencies = [
 [[package]]
 name = "voxel-sources"
 version = "0.1.0"
-<<<<<<< HEAD
 source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#a156ac7ae3cf889db971e68554af18fe3110aeb1"
-=======
-source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#136b8c0a189b8de22c0a2d22789ef1dd19a4c525"
->>>>>>> f4681ea10596e72c9578968b2a438959782c8fca
 dependencies = [
  "bevy",
  "crossbeam-channel",
@@ -5788,22 +5756,14 @@ dependencies = [
 [[package]]
 name = "voxel-streaming"
 version = "0.1.0"
-<<<<<<< HEAD
 source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#a156ac7ae3cf889db971e68554af18fe3110aeb1"
-=======
-source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#136b8c0a189b8de22c0a2d22789ef1dd19a4c525"
->>>>>>> f4681ea10596e72c9578968b2a438959782c8fca
 dependencies = [
  "bevy",
  "bevy-trait-query",
  "bevy_ecs",
  "crossbeam-channel",
  "getrandom 0.3.4",
-<<<<<<< HEAD
  "getrandom 0.4.3",
-=======
- "getrandom 0.4.2",
->>>>>>> f4681ea10596e72c9578968b2a438959782c8fca
  "tracy-client",
  "voxel-data",
  "voxel-edit",
@@ -6020,15 +5980,9 @@ dependencies = [
 
 [[package]]
 name = "wesl"
-<<<<<<< HEAD
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dc3857a39e7220245e4ec1e2f6230e1b5ccd3542545bc1ee5c13d79597e6d193"
-=======
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be113b462f90d3e303324739a4431bc63dfd0b463d7582cc76c1fd2093b5d470"
->>>>>>> f4681ea10596e72c9578968b2a438959782c8fca
 dependencies = [
  "annotate-snippets",
  "derive_more",
@@ -6043,15 +5997,9 @@ dependencies = [
 
 [[package]]
 name = "wesl-macros"
-<<<<<<< HEAD
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8662ee0b2ef199c31f486b869e5272ac364898c09d352483370d37b8c3abf9f9"
-=======
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d321ea9e1cc0a2e3de41c02e3a7586695a9c03beccb5460e938a7ccf00cb612"
->>>>>>> f4681ea10596e72c9578968b2a438959782c8fca
 dependencies = [
  "itertools 0.14.0",
  "proc-macro2",
@@ -6223,15 +6171,9 @@ dependencies = [
 
 [[package]]
 name = "wgsl-parse"
-<<<<<<< HEAD
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2141e2425fbb5aefd13e875adc7247e5dc889a3bbbe5a016dd1546211405f89f"
-=======
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "946419efa46664a8070c512fb358ac4acfc6e6215c2396ae5afeb9b72dd6ca7d"
->>>>>>> f4681ea10596e72c9578968b2a438959782c8fca
 dependencies = [
  "annotate-snippets",
  "derive_more",
@@ -6246,15 +6188,9 @@ dependencies = [
 
 [[package]]
 name = "wgsl-types"
-<<<<<<< HEAD
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3cf8623d173060d5a9e1465b89954ea42f3ac21af2f533c7975d003f8d82b98"
-=======
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7aed068ca1dc8fb182f574c9f2ace45ec988c71ba050f6dd334883fe3b8a88e2"
->>>>>>> f4681ea10596e72c9578968b2a438959782c8fca
 dependencies = [
  "half",
  "itertools 0.14.0",
