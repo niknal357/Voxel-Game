@@ -1,5 +1,7 @@
+use bevy::input::mouse::AccumulatedMouseMotion;
 use bevy::prelude::*;
 use bevy::render::view::{Hdr, Msaa};
+use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
 
 pub fn setup_camera(mut commands: Commands) {
     commands.spawn((
@@ -7,5 +9,123 @@ pub fn setup_camera(mut commands: Commands) {
         Hdr,
         Msaa::Off,
         Transform::from_xyz(0.0, 4200.0, 120.0),
+        FlyCamera::default(),
     ));
+}
+
+#[derive(Component)]
+pub struct FlyCamera {
+    speed: f32,
+    rotation_speed: f32,
+    mouse_sensitivity: f32,
+    yaw: f32,
+    pitch: f32,
+}
+
+impl Default for FlyCamera {
+    fn default() -> Self {
+        Self {
+            speed: 300.0,
+            rotation_speed: 1.5,
+            mouse_sensitivity: 0.0015,
+            yaw: 0.0,
+            pitch: 0.0,
+        }
+    }
+}
+
+pub struct FlyCameraPlugin;
+
+impl Plugin for FlyCameraPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_systems(Update, (toggle_cursor_grab, fly_camera_system).chain());
+    }
+}
+
+const PITCH_LIMIT: f32 = std::f32::consts::FRAC_PI_2 - 0.01;
+
+fn fly_camera_system(
+    time: Res<Time>,
+    keys: Res<ButtonInput<KeyCode>>,
+    mouse_motion: Res<AccumulatedMouseMotion>,
+    cursor_options: Query<&CursorOptions, With<PrimaryWindow>>,
+    mut cameras: Query<(&mut Transform, &mut FlyCamera)>,
+) {
+    let dt = time.delta_secs();
+    let mouse_captured = cursor_options
+        .single()
+        .map(|cursor| cursor.grab_mode != CursorGrabMode::None)
+        .unwrap_or(false);
+    let mouse_delta = if mouse_captured {
+        mouse_motion.delta
+    } else {
+        Vec2::ZERO
+    };
+
+    for (mut transform, mut camera) in &mut cameras {
+        camera.yaw -= mouse_delta.x * camera.mouse_sensitivity;
+        camera.pitch -= mouse_delta.y * camera.mouse_sensitivity;
+
+        if keys.pressed(KeyCode::ArrowLeft) {
+            camera.yaw += camera.rotation_speed * dt;
+        }
+        if keys.pressed(KeyCode::ArrowRight) {
+            camera.yaw -= camera.rotation_speed * dt;
+        }
+        if keys.pressed(KeyCode::ArrowUp) {
+            camera.pitch += camera.rotation_speed * dt;
+        }
+        if keys.pressed(KeyCode::ArrowDown) {
+            camera.pitch -= camera.rotation_speed * dt;
+        }
+
+        camera.pitch = camera.pitch.clamp(-PITCH_LIMIT, PITCH_LIMIT);
+        transform.rotation = Quat::from_axis_angle(Vec3::Y, camera.yaw)
+            * Quat::from_axis_angle(Vec3::X, camera.pitch);
+
+        let sprint = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
+        let speed = camera.speed * if sprint { 8.0 } else { 1.0 };
+        let mut direction = Vec3::ZERO;
+
+        if keys.pressed(KeyCode::KeyW) {
+            direction += transform.forward().as_vec3();
+        }
+        if keys.pressed(KeyCode::KeyS) {
+            direction -= transform.forward().as_vec3();
+        }
+        if keys.pressed(KeyCode::KeyD) {
+            direction += transform.right().as_vec3();
+        }
+        if keys.pressed(KeyCode::KeyA) {
+            direction -= transform.right().as_vec3();
+        }
+        if keys.pressed(KeyCode::KeyE) {
+            direction += transform.up().as_vec3();
+        }
+        if keys.pressed(KeyCode::KeyQ) {
+            direction -= transform.up().as_vec3();
+        }
+
+        if direction != Vec3::ZERO {
+            transform.translation += direction.normalize() * speed * dt;
+        }
+    }
+}
+
+fn toggle_cursor_grab(
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
+    keys: Res<ButtonInput<KeyCode>>,
+    mut cursor_options: Query<&mut CursorOptions, With<PrimaryWindow>>,
+) {
+    let Ok(mut cursor) = cursor_options.single_mut() else {
+        return;
+    };
+
+    if mouse_buttons.just_pressed(MouseButton::Left) {
+        cursor.grab_mode = CursorGrabMode::Locked;
+        cursor.visible = false;
+    } else if keys.just_pressed(KeyCode::Escape) {
+        cursor.grab_mode = CursorGrabMode::None;
+        cursor.visible = true;
+    }
 }

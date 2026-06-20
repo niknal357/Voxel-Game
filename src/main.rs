@@ -3,7 +3,6 @@ mod game_plugins;
 mod gravity;
 mod objects;
 mod planet_source;
-mod player_controller;
 mod world_interaction;
 
 use std::time::Duration;
