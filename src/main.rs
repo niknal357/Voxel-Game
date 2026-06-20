@@ -1,5 +1,7 @@
 mod camera_controller;
 mod game_plugins;
+mod gravity;
+mod objects;
 mod planet_source;
 
 use std::time::Duration;
