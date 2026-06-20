@@ -1733,6 +1733,9 @@ name = "bimap"
 version = "0.6.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "230c5f1ca6a325a32553f8640d31ac9b49f2411e901e427570154868b46da4f7"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "bindgen"
@@ -1916,7 +1919,7 @@ dependencies = [
 [[package]]
 name = "camera-voxel-loader"
 version = "0.1.0"
-source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#a156ac7ae3cf889db971e68554af18fe3110aeb1"
+source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#d90ecc2d80100e0176b57bde04aa2c66f600298b"
 dependencies = [
  "bevy",
  "tracy-client",
@@ -1928,9 +1931,9 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.2.64"
+version = "1.2.65"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dad887fd958be91b5098c0248def011f4523ab786cd411be668777e55063501f"
+checksum = "e228eec9be7c17ccb640b59b36a5cd805ea2a564a4c5e162c2f659fea30d3b96"
 dependencies = [
  "find-msvc-tools",
  "jobserver",
@@ -4892,6 +4895,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde-big-array"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11fc7cc2c76d73e0f27ee52abbd64eec84d46f370c88371120433196934e4b7f"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde_core"
 version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5665,22 +5677,28 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "voxel-data"
 version = "0.1.0"
-source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#a156ac7ae3cf889db971e68554af18fe3110aeb1"
+source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#d90ecc2d80100e0176b57bde04aa2c66f600298b"
 dependencies = [
  "async-priority-queue",
  "bevy",
  "bimap",
  "crossbeam-channel",
+ "futures",
  "getrandom 0.3.4",
  "getrandom 0.4.3",
- "tokio",
+ "js-sys",
+ "serde",
+ "serde-big-array",
  "tracy-client",
+ "wasm-bindgen",
+ "wasm_thread",
+ "web-sys",
 ]
 
 [[package]]
 name = "voxel-edit"
 version = "0.1.0"
-source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#a156ac7ae3cf889db971e68554af18fe3110aeb1"
+source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#d90ecc2d80100e0176b57bde04aa2c66f600298b"
 dependencies = [
  "bevy",
  "bevy-trait-query",
@@ -5694,7 +5712,7 @@ dependencies = [
 [[package]]
 name = "voxel-gpu"
 version = "0.1.0"
-source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#a156ac7ae3cf889db971e68554af18fe3110aeb1"
+source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#d90ecc2d80100e0176b57bde04aa2c66f600298b"
 dependencies = [
  "bevy",
  "bytemuck",
@@ -5707,13 +5725,14 @@ dependencies = [
  "rand 0.10.1",
  "tracy-client",
  "voxel-data",
+ "web-sys",
  "wgpu",
 ]
 
 [[package]]
 name = "voxel-physics"
 version = "0.1.0"
-source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#a156ac7ae3cf889db971e68554af18fe3110aeb1"
+source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#d90ecc2d80100e0176b57bde04aa2c66f600298b"
 dependencies = [
  "bevy",
  "getrandom 0.3.4",
@@ -5727,7 +5746,7 @@ dependencies = [
 [[package]]
 name = "voxel-renderer"
 version = "0.1.0"
-source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#a156ac7ae3cf889db971e68554af18fe3110aeb1"
+source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#d90ecc2d80100e0176b57bde04aa2c66f600298b"
 dependencies = [
  "anyhow",
  "bevy",
@@ -5737,6 +5756,7 @@ dependencies = [
  "log",
  "voxel-data",
  "voxel-gpu",
+ "web-sys",
  "wesl",
  "wgpu",
 ]
@@ -5744,30 +5764,35 @@ dependencies = [
 [[package]]
 name = "voxel-sources"
 version = "0.1.0"
-source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#a156ac7ae3cf889db971e68554af18fe3110aeb1"
+source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#d90ecc2d80100e0176b57bde04aa2c66f600298b"
 dependencies = [
  "bevy",
  "crossbeam-channel",
+ "js-sys",
+ "serde",
  "tracy-client",
  "voxel-data",
- "voxel-streaming",
+ "wasm-bindgen",
+ "wasm_thread",
+ "web-sys",
 ]
 
 [[package]]
 name = "voxel-streaming"
 version = "0.1.0"
-source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#a156ac7ae3cf889db971e68554af18fe3110aeb1"
+source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#d90ecc2d80100e0176b57bde04aa2c66f600298b"
 dependencies = [
  "bevy",
  "bevy-trait-query",
  "bevy_ecs",
- "crossbeam-channel",
  "getrandom 0.3.4",
  "getrandom 0.4.3",
  "tracy-client",
  "voxel-data",
  "voxel-edit",
  "voxel-gpu",
+ "voxel-sources",
+ "web-sys",
 ]
 
 [[package]]
@@ -5851,6 +5876,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "wasm_thread"
+version = "0.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b7516db7f32decdadb1c3b8deb1b7d78b9df7606c5cc2f6241737c2ab3a0258e"
+dependencies = [
+ "futures",
+ "js-sys",
+ "wasm-bindgen",
+ "web-sys",
+]
+
+[[package]]
 name = "wayland-backend"
 version = "0.3.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5900,9 +5937,9 @@ dependencies = [
 
 [[package]]
 name = "wayland-protocols"
-version = "0.32.12"
+version = "0.32.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "563a85523cade2429938e790815fd7319062103b9f4a2dc806e9b53b95982d8f"
+checksum = "23d0c813de3daa2ed6520af85a3bd49b0e722a3078506899aa9686fea58dc4b6"
 dependencies = [
  "bitflags 2.13.0",
  "wayland-backend",

@@ -2,16 +2,16 @@ use std::sync::OnceLock;
 
 use bevy::prelude::*;
 use tracy_client::span;
-use voxel_data::grid::Grid;
+use voxel_data::grid::{Grid, GridId};
 use voxel_edit::GridEdits;
 use voxel_physics::{IsStatic, RigidBody, components::VoxelCollider};
-use voxel_sources::{ChunkSource, GridKey, SourceHandle, VoxelSourcesAppExt};
+use voxel_sources::{ChunkSource, SourceHandle, VoxelSourcesAppExt};
 use voxel_streaming::GridStreaming;
 
 use super::config::PLANET_COST;
 use super::generation::{build_planet_chunk, build_planet_lod_region};
 use super::tiles::{
-    grid_key, planet_tiles, tile_has_any_chunk_in_region, tile_has_chunk, tile_index,
+    planet_tiles, tile_has_any_chunk_in_region, tile_has_chunk
 };
 
 pub struct ProceduralPlanetPlugin;
@@ -34,12 +34,12 @@ impl ChunkSource for ProceduralPlanetSource {
         let _ = self.handle.set(handle);
     }
 
-    fn cost(&self, grid: GridKey, chunk: IVec3) -> Option<u32> {
-        let tile = planet_tiles().get(tile_index(grid)?)?;
+    fn cost(&self, grid_id: GridId, chunk: IVec3) -> Option<u32> {
+        let tile = planet_tiles().get(*self./* NIKFIX */.get(&grid_id)?)?;
         tile_has_chunk(tile, chunk).then_some(PLANET_COST)
     }
 
-    fn request_load(&self, grid: GridKey, chunk: IVec3) {
+    fn request_load(&self, grid: GridId, chunk: IVec3) {
         let _zone = span!("planet source request_load chunk");
         let voxels = build_planet_chunk(grid, chunk);
         if let Some(handle) = self.handle.get() {
@@ -48,18 +48,18 @@ impl ChunkSource for ProceduralPlanetSource {
         }
     }
 
-    fn cost_lod(&self, grid: GridKey, min: IVec3, size: IVec3, _lod: f32) -> Option<u32> {
-        let tile = planet_tiles().get(tile_index(grid)?)?;
+    fn cost_lod(&self, grid_id: GridId, min: IVec3, size: IVec3, _lod: f32) -> Option<u32> {
+        let tile = planet_tiles().get(*self./* NIKFIX */.get(&grid_id)?)?;
         tile_has_any_chunk_in_region(tile, min, size).then_some(PLANET_COST)
     }
 
-    fn request_load_lod(&self, grid: GridKey, min: IVec3, size: IVec3, lod: f32) {
+    fn request_load_lod(&self, grid_id: GridId, min: IVec3, size: IVec3, lod: f32) {
         let _zone = span!("planet source request_load_lod");
         tracy_client::plot!("planet lod level", lod as f64);
-        let voxels = build_planet_lod_region(grid, min, size, lod);
+        let voxels = build_planet_lod_region(grid_id, min, size, lod);
         if let Some(handle) = self.handle.get() {
             let _zone = span!("planet source publish lod");
-            handle.loaded_lod(grid, min, size, lod, voxels);
+            handle.loaded_lod(grid_id, min, size, lod, voxels);
         }
     }
 }
@@ -70,7 +70,7 @@ fn spawn_planet(mut commands: Commands) {
         .id();
 
     for tile in planet_tiles() {
-        let key = grid_key(tile.index);
+
         let mut streaming = GridStreaming::default();
         for &chunk in &tile.present_chunks {
             streaming.presence_mut().mark_present(chunk);
@@ -89,7 +89,6 @@ fn spawn_planet(mut commands: Commands) {
                 Grid::new(),
                 VoxelCollider,
                 GridEdits::default(),
-                key,
                 streaming,
             ))
             .id();

@@ -3,23 +3,22 @@ use std::sync::OnceLock;
 
 use bevy::prelude::*;
 use tracy_client::span;
-use voxel_sources::GridKey;
 use voxel_streaming::{CHUNK_SIZE, chunk_of, chunk_origin};
 
 use super::config::{
-    PLANET_GRID_BASE, PLANET_RADIUS, PLANET_TILE_COUNT, TILE_BOUND_PADDING, TILE_INWARD_DEPTH,
+    PLANET_RADIUS, PLANET_TILE_COUNT, TILE_BOUND_PADDING, TILE_INWARD_DEPTH,
     TILE_OUTWARD_HEIGHT, TILE_SHAPE_EPSILON, VORONOI_NEIGHBORS,
 };
 use super::terrain::tile_tint;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub(super) struct Halfspace {
     // Local tile coordinates are inside when normal.dot(local) + offset >= 0.
     pub(super) normal: Vec3,
     pub(super) offset: f32,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub(super) struct PlanetTile {
     pub(super) index: usize,
     pub(super) normal: Vec3,
@@ -112,15 +111,6 @@ fn fibonacci_sphere_point(index: usize, count: usize) -> Vec3 {
     let h = PI * (1.0 + 5.0_f32.sqrt()) * i;
     let radius = (1.0 - y * y).max(0.0).sqrt();
     Vec3::new(h.cos() * radius, y, h.sin() * radius).normalize()
-}
-
-pub(super) fn grid_key(index: usize) -> GridKey {
-    GridKey(PLANET_GRID_BASE + index as u64)
-}
-
-pub(super) fn tile_index(grid: GridKey) -> Option<usize> {
-    let index = grid.0.checked_sub(PLANET_GRID_BASE)? as usize;
-    (index < PLANET_TILE_COUNT).then_some(index)
 }
 
 fn voronoi_halfspace(

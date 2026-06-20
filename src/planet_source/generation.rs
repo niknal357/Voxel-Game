@@ -2,16 +2,16 @@ use bevy::math::I16Vec3;
 use bevy::prelude::*;
 use tracy_client::span;
 use voxel_data::voxels::{Voxel, Voxels};
-use voxel_sources::GridKey;
+use voxel_data::grid::GridId;
 use voxel_streaming::{CHUNK_SIZE, chunk_origin};
 
 use super::config::{PLANET_RADIUS, TILE_INWARD_DEPTH, TILE_OUTWARD_HEIGHT, TILE_SHAPE_EPSILON};
 use super::terrain::{terrain_color, terrain_sample};
-use super::tiles::{PlanetTile, planet_tiles, tile_index};
+use super::tiles::{PlanetTile, planet_tiles};
 
-pub(super) fn build_planet_chunk(grid: GridKey, chunk: IVec3) -> Option<Voxels> {
+pub(super) fn build_planet_chunk(grid_id: GridId, chunk: IVec3) -> Option<Voxels> {
     let _zone = span!("planet build chunk");
-    let tile = &planet_tiles()[tile_index(grid)?];
+    let tile = &planet_tiles()[/* NIKFIX */(grid_id)?];
     let origin = chunk_origin(chunk);
     let mut points = Vec::new();
     append_planet_samples(
@@ -28,13 +28,13 @@ pub(super) fn build_planet_chunk(grid: GridKey, chunk: IVec3) -> Option<Voxels> 
 }
 
 pub(super) fn build_planet_lod_region(
-    grid: GridKey,
+    grid: GridId,
     min_chunk: IVec3,
     size_chunks: IVec3,
     lod: f32,
 ) -> Option<Voxels> {
     let _zone = span!("planet build lod region");
-    let tile = &planet_tiles()[tile_index(grid)?];
+    let tile = &planet_tiles()[/* NIKFIX */(grid)?];
     let step = 1i32 << lod.max(0.0).floor() as u32;
     let sample_offset = step / 2;
     let extent = (size_chunks * CHUNK_SIZE) / step;
