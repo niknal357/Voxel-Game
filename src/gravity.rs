@@ -1,13 +1,17 @@
 use bevy::prelude::*;
 use voxel_physics::{Accelerations, FreezePhysics, IsStatic, PhysicsSet, RigidBody};
 
+use crate::planet_source::PLANET_RADIUS;
+
 /// Pulls dynamic physics bodies toward the center of the planet.
 pub(crate) struct GravityPlugin;
 
 #[derive(Resource, Debug, Clone, Copy)]
 pub(crate) struct PlanetGravity {
     pub center: Vec3,
+    /// Acceleration at `reference_distance` from the gravity center.
     pub acceleration: f32,
+    pub reference_distance: f32,
 }
 
 impl Default for PlanetGravity {
@@ -15,6 +19,7 @@ impl Default for PlanetGravity {
         Self {
             center: Vec3::ZERO,
             acceleration: 150.0,
+            reference_distance: PLANET_RADIUS,
         }
     }
 }
@@ -46,7 +51,7 @@ fn apply_planet_gravity(
             continue;
         }
 
-        accelerations
-            .apply_central_acceleration(body, to_center.normalize() * gravity.acceleration);
+        let acceleration = gravity.acceleration * gravity.reference_distance.powi(2) / distance_squared;
+        accelerations.apply_central_acceleration(body, to_center.normalize() * acceleration);
     }
 }
