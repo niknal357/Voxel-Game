@@ -1,6 +1,5 @@
 use voxel_streaming::CHUNK_SIZE;
 
-pub(super) const PLANET_GRID_BASE: u64 = 10000;
 pub(super) const PLANET_TILE_COUNT: usize = 1024;
 pub(super) const PLANET_RADIUS: f32 = 4096.0;
 pub(super) const PLANET_COST: u32 = 1;

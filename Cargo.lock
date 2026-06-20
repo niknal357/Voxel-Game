@@ -1919,7 +1919,7 @@ dependencies = [
 [[package]]
 name = "camera-voxel-loader"
 version = "0.1.0"
-source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#d90ecc2d80100e0176b57bde04aa2c66f600298b"
+source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#318e63ad79a5ab05f460fa3669e7364be5439331"
 dependencies = [
  "bevy",
  "tracy-client",
@@ -5677,7 +5677,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 [[package]]
 name = "voxel-data"
 version = "0.1.0"
-source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#d90ecc2d80100e0176b57bde04aa2c66f600298b"
+source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#318e63ad79a5ab05f460fa3669e7364be5439331"
 dependencies = [
  "async-priority-queue",
  "bevy",
@@ -5698,7 +5698,7 @@ dependencies = [
 [[package]]
 name = "voxel-edit"
 version = "0.1.0"
-source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#d90ecc2d80100e0176b57bde04aa2c66f600298b"
+source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#318e63ad79a5ab05f460fa3669e7364be5439331"
 dependencies = [
  "bevy",
  "bevy-trait-query",
@@ -5712,7 +5712,7 @@ dependencies = [
 [[package]]
 name = "voxel-gpu"
 version = "0.1.0"
-source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#d90ecc2d80100e0176b57bde04aa2c66f600298b"
+source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#318e63ad79a5ab05f460fa3669e7364be5439331"
 dependencies = [
  "bevy",
  "bytemuck",
@@ -5732,7 +5732,7 @@ dependencies = [
 [[package]]
 name = "voxel-physics"
 version = "0.1.0"
-source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#d90ecc2d80100e0176b57bde04aa2c66f600298b"
+source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#318e63ad79a5ab05f460fa3669e7364be5439331"
 dependencies = [
  "bevy",
  "getrandom 0.3.4",
@@ -5746,7 +5746,7 @@ dependencies = [
 [[package]]
 name = "voxel-renderer"
 version = "0.1.0"
-source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#d90ecc2d80100e0176b57bde04aa2c66f600298b"
+source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#318e63ad79a5ab05f460fa3669e7364be5439331"
 dependencies = [
  "anyhow",
  "bevy",
@@ -5764,7 +5764,7 @@ dependencies = [
 [[package]]
 name = "voxel-sources"
 version = "0.1.0"
-source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#d90ecc2d80100e0176b57bde04aa2c66f600298b"
+source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#318e63ad79a5ab05f460fa3669e7364be5439331"
 dependencies = [
  "bevy",
  "crossbeam-channel",
@@ -5780,7 +5780,7 @@ dependencies = [
 [[package]]
 name = "voxel-streaming"
 version = "0.1.0"
-source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#d90ecc2d80100e0176b57bde04aa2c66f600298b"
+source = "git+https://github.com/ItchyTrack/Voxel-Game-Engine.git?branch=main#318e63ad79a5ab05f460fa3669e7364be5439331"
 dependencies = [
  "bevy",
  "bevy-trait-query",
