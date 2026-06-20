@@ -10,6 +10,7 @@ use crate::camera_controller::FlyCameraPlugin;
 use crate::gravity::GravityPlugin;
 use crate::objects::BallPlugin;
 use crate::planet_source::ProceduralPlanetPlugin;
+use crate::world_interaction::WorldInteractionPlugin;
 // use crate::sphere_source::ProceduralSpherePlugin;
 
 pub struct GamePlugins;
@@ -27,5 +28,6 @@ impl PluginGroup for GamePlugins {
             .add(CameraVoxelLoaderPlugin)
             .add(VoxelRendererPlugin)
             .add(FlyCameraPlugin)
+            .add(WorldInteractionPlugin)
     }
 }
