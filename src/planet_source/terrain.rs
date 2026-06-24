@@ -19,10 +19,11 @@ pub(super) fn terrain_sample(unit: Vec3) -> TerrainSample {
 }
 
 fn terrain_height(unit: Vec3) -> f32 {
-    let continents = fbm(unit * 2.1 + Vec3::new(17.0, -31.0, 8.0), 5);
-    let hills = fbm(unit * 8.0 + Vec3::new(-4.0, 19.0, 52.0), 4);
-    let ridges = (1.0 - fbm(unit * 14.0 + Vec3::new(91.0, 7.0, -23.0), 4).abs()).powi(2);
-    12.0 + continents * 34.0 + hills * 14.0 + ridges * TERRAIN_HEIGHT
+    // let continents = fbm(unit * 2.1 + Vec3::new(17.0, -31.0, 8.0), 5);
+    // let hills = fbm(unit * 8.0 + Vec3::new(-4.0, 19.0, 52.0), 4);
+    // let ridges = (1.0 - fbm(unit * 14.0 + Vec3::new(91.0, 7.0, -23.0), 4).abs()).powi(2);
+    // 12.0 + continents * 34.0 + hills * 14.0 + ridges * TERRAIN_HEIGHT
+    0.0
 }
 
 pub(super) fn terrain_color(tint: [u8; 3], column: TerrainSample, altitude: f32) -> [u8; 4] {

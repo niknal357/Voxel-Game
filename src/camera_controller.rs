@@ -3,12 +3,14 @@ use bevy::prelude::*;
 use bevy::render::view::{Hdr, Msaa};
 use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
 
+use crate::planet_source::PLANET_RADIUS;
+
 pub fn setup_camera(mut commands: Commands) {
     commands.spawn((
         Camera3d::default(),
         Hdr,
         Msaa::Off,
-        Transform::from_xyz(0.0, 4200.0, 120.0),
+        Transform::from_xyz(0.0, PLANET_RADIUS + 64.0, 120.0),
         FlyCamera::default(),
     ));
 }
