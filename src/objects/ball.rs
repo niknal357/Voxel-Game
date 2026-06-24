@@ -55,10 +55,10 @@ impl ChunkSource for BallSource {
         (self.is_mine(grid) && chunk_intersects_ball(chunk)).then_some(BALL_COST)
     }
 
-    fn request_load(&self, grid: GridId, chunk: IVec3) {
+    fn request_load(&self, grid: GridId, chunk: IVec3, generation: u64) {
         let voxels = build_ball_chunk(chunk, true);
         if let Some(handle) = self.handle.get() {
-            handle.loaded(grid, chunk, voxels);
+            handle.loaded(grid, chunk, generation, voxels);
         }
     }
 
@@ -66,10 +66,10 @@ impl ChunkSource for BallSource {
         (self.is_mine(grid) && chunk_region_intersects_ball(min, size)).then_some(BALL_COST)
     }
 
-    fn request_load_lod(&self, grid: GridId, min: IVec3, size: IVec3, lod: f32) {
+    fn request_load_lod(&self, grid: GridId, min: IVec3, size: IVec3, lod: f32, generation: u64) {
         let voxels = build_ball_lod_region(min, size, lod);
         if let Some(handle) = self.handle.get() {
-            handle.loaded_lod(grid, min, size, lod, voxels);
+            handle.loaded_lod(grid, min, size, lod, generation, voxels);
         }
     }
 }
