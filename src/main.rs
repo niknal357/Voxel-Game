@@ -12,7 +12,6 @@ use bevy::prelude::*;
 use bevy::window::{WindowPlugin, WindowResolution};
 use camera_voxel_loader::{CameraVoxelLoaderDefaultSettings, CameraVoxelLoaderSettings};
 
-use camera_controller::setup_camera;
 use game_plugins::GamePlugins;
 
 fn main() {
@@ -48,8 +47,7 @@ fn main() {
             max_in_flight: 32,
         },
     ))
-    .add_plugins(GamePlugins)
-    .add_systems(Startup, setup_camera);
+    .add_plugins(GamePlugins);
 
     #[cfg(feature = "tracy")]
     app.add_systems(Last, || tracing_tracy::client::frame_mark());

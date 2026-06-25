@@ -8,7 +8,7 @@ use voxel_streaming::VoxelStreamingPlugin;
 
 use crate::camera_controller::FlyCameraPlugin;
 use crate::gravity::GravityPlugin;
-use crate::objects::BallPlugin;
+use crate::objects::{BallPlugin, SpaceshipPlugin};
 use crate::planet_source::ProceduralPlanetPlugin;
 use crate::world_interaction::WorldInteractionPlugin;
 // use crate::sphere_source::ProceduralSpherePlugin;
@@ -25,6 +25,7 @@ impl PluginGroup for GamePlugins {
             // .add(ProceduralSpherePlugin)
             .add(ProceduralPlanetPlugin)
             .add(BallPlugin)
+            .add(SpaceshipPlugin)
             .add(CameraVoxelLoaderPlugin)
             .add(VoxelRendererPlugin)
             .add(FlyCameraPlugin)

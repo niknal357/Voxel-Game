@@ -1,19 +1,7 @@
 use bevy::input::mouse::AccumulatedMouseMotion;
 use bevy::prelude::*;
-use bevy::render::view::{Hdr, Msaa};
 use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
-
-use crate::planet_source::PLANET_RADIUS;
-
-pub fn setup_camera(mut commands: Commands) {
-    commands.spawn((
-        Camera3d::default(),
-        Hdr,
-        Msaa::Off,
-        Transform::from_xyz(0.0, PLANET_RADIUS + 64.0, 120.0),
-        FlyCamera::default(),
-    ));
-}
+use bevy_egui::input::EguiWantsInput;
 
 #[derive(Component)]
 pub struct FlyCamera {
@@ -117,16 +105,23 @@ fn fly_camera_system(
 fn toggle_cursor_grab(
     mouse_buttons: Res<ButtonInput<MouseButton>>,
     keys: Res<ButtonInput<KeyCode>>,
+    egui_wants: Option<Res<EguiWantsInput>>,
     mut cursor_options: Query<&mut CursorOptions, With<PrimaryWindow>>,
 ) {
+    let egui_pointer = egui_wants
+        .as_ref()
+        .is_some_and(|wants| wants.wants_any_pointer_input());
+    let egui_keys = egui_wants
+        .as_ref()
+        .is_some_and(|wants| wants.wants_any_keyboard_input());
     let Ok(mut cursor) = cursor_options.single_mut() else {
         return;
     };
 
-    if mouse_buttons.just_pressed(MouseButton::Left) {
+    if mouse_buttons.just_pressed(MouseButton::Left) && !egui_pointer {
         cursor.grab_mode = CursorGrabMode::Locked;
         cursor.visible = false;
-    } else if keys.just_pressed(KeyCode::Escape) {
+    } else if keys.just_pressed(KeyCode::Escape) && !egui_keys {
         cursor.grab_mode = CursorGrabMode::None;
         cursor.visible = true;
     }
