@@ -1,7 +1,7 @@
 use std::sync::{Arc, OnceLock};
 
 use bevy::input::mouse::AccumulatedMouseMotion;
-use bevy::math::I16Vec3;
+use bevy::math::U16Vec3;
 use bevy::prelude::*;
 use bevy::render::view::{Hdr, Msaa};
 use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
@@ -758,7 +758,7 @@ fn build_ship_chunk(chunk: IVec3, include_mass: bool) -> Option<Voxels> {
                 let Some(voxel) = ship_voxel(origin + local, mass) else {
                     continue;
                 };
-                points.push((local.as_i16vec3(), voxel));
+                points.push((local.as_u16vec3(), voxel));
             }
         }
     }
@@ -782,7 +782,7 @@ fn build_ship_lod_region(min_chunk: IVec3, size_chunks: IVec3, lod: f32) -> Opti
                 let Some(voxel) = ship_voxel(origin + sample, 0) else {
                     continue;
                 };
-                points.push((coarse.as_i16vec3(), voxel));
+                points.push((coarse.as_u16vec3(), voxel));
             }
         }
     }
@@ -790,7 +790,7 @@ fn build_ship_lod_region(min_chunk: IVec3, size_chunks: IVec3, lod: f32) -> Opti
     points_to_voxels(points)
 }
 
-fn points_to_voxels(points: Vec<(I16Vec3, Voxel)>) -> Option<Voxels> {
+fn points_to_voxels(points: Vec<(U16Vec3, Voxel)>) -> Option<Voxels> {
     if points.is_empty() {
         None
     } else {

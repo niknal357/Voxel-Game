@@ -101,7 +101,7 @@ fn build_sphere_chunk(chunk: IVec3) -> Option<Voxels> {
             for z in 0..CHUNK_SIZE {
                 let local = IVec3::new(x, y, z);
                 if let Some(voxel) = sphere_voxel(origin + local) {
-                    voxels.add_voxel(local.as_i16vec3(), voxel);
+                    voxels.add_voxel(local.as_u16vec3(), voxel);
                 }
             }
         }
@@ -124,7 +124,7 @@ fn build_sphere_lod_region(min_chunk: IVec3, size_chunks: IVec3, lod: f32) -> Op
                 let coarse = IVec3::new(x, y, z);
                 let sample = (coarse * step + IVec3::splat(half_step)).min(max_source);
                 if let Some(voxel) = sphere_voxel(origin + sample) {
-                    voxels.add_voxel(coarse.as_i16vec3(), voxel);
+                    voxels.add_voxel(coarse.as_u16vec3(), voxel);
                 }
             }
         }
