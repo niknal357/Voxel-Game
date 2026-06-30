@@ -19,8 +19,8 @@ tracy = [
 ]
 
 [dependencies]
-bevy = "0.18.1"
-bevy_egui = "0.39"
+bevy = "0.19.0"
+bevy_egui = "0.40"
 tokio = { version = "1", features = ["full"] }
 tracing-tracy = { version = "0.11", default-features = false, features = ["enable", "broadcast"], optional = true }
 tracy-client = { version = "0.18.4", default-features = false }
@@ -33,3 +33,6 @@ voxel-physics = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", b
 voxel-renderer = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
 voxel-sources = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
 voxel-streaming = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
+
+[profile.release]
+debug = true

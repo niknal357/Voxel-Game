@@ -1,4 +1,4 @@
-use bevy::math::I16Vec3;
+use bevy::math::U16Vec3;
 use bevy::prelude::*;
 use tracy_client::span;
 use voxel_data::voxels::{Voxel, Voxels};
@@ -57,7 +57,7 @@ pub(super) fn build_planet_lod_region(
     points_to_voxels(points)
 }
 
-fn points_to_voxels(points: Vec<(I16Vec3, Voxel)>) -> Option<Voxels> {
+fn points_to_voxels(points: Vec<(U16Vec3, Voxel)>) -> Option<Voxels> {
     let _zone = span!("planet points to voxels");
     tracy_client::plot!("planet points to voxels input", points.len() as f64);
     if points.is_empty() {
@@ -76,7 +76,7 @@ fn append_planet_samples(
     step: i32,
     sample_offset: i32,
     full_mass: bool,
-    points: &mut Vec<(I16Vec3, Voxel)>,
+    points: &mut Vec<(U16Vec3, Voxel)>,
 ) {
     let _zone = span!("planet append samples");
     let mass = if full_mass { 100 } else { 0 };
@@ -125,7 +125,7 @@ fn append_planet_samples(
                 }
 
                 points.push((
-                    IVec3::new(x, y, z).as_i16vec3(),
+                    IVec3::new(x, y, z).as_u16vec3(),
                     Voxel {
                         color: terrain_color(tile.tint, terrain, altitude),
                         mass,

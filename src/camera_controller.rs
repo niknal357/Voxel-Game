@@ -1,7 +1,21 @@
+use bevy::camera::Hdr;
 use bevy::input::mouse::AccumulatedMouseMotion;
 use bevy::prelude::*;
-use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
 use bevy_egui::input::EguiWantsInput;
+use bevy::render::view::{Msaa};
+use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
+
+use crate::planet_source::PLANET_RADIUS;
+
+pub fn setup_camera(mut commands: Commands) {
+    commands.spawn((
+        Camera3d::default(),
+        Hdr,
+        Msaa::Off,
+        Transform::from_xyz(0.0, PLANET_RADIUS + 64.0, 120.0),
+        FlyCamera::default(),
+    ));
+}
 
 #[derive(Component)]
 pub struct FlyCamera {
