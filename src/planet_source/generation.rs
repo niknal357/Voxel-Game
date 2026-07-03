@@ -127,7 +127,7 @@ fn append_planet_samples(
                 points.push((
                     IVec3::new(x, y, z).as_u16vec3(),
                     Voxel {
-                        color: terrain_color(tile.tint, terrain, altitude),
+                        color: terrain_color(terrain, altitude),
                         mass,
                     },
                 ));

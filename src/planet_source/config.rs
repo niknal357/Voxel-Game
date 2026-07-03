@@ -1,7 +1,7 @@
 use voxel_streaming::CHUNK_SIZE;
 
 pub(super) const PLANET_TILE_COUNT: usize = 1024;
-pub(crate) const PLANET_RADIUS: f32 = 256.0 * 32.0;
+pub(crate) const PLANET_RADIUS: f32 = 512.0 * 32.0;
 pub(super) const PLANET_COST: u32 = 1;
 
 // Each tangent grid is clipped by the spherical Voronoi cell around its

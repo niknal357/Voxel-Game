@@ -9,7 +9,6 @@ use super::config::{
     PLANET_RADIUS, PLANET_TILE_COUNT, TILE_BOUND_PADDING, TILE_INWARD_DEPTH, TILE_OUTWARD_HEIGHT,
     TILE_SHAPE_EPSILON, VORONOI_NEIGHBORS,
 };
-use super::terrain::tile_tint;
 
 #[derive(Debug, Clone)]
 pub(super) struct Halfspace {
@@ -29,7 +28,6 @@ pub(super) struct PlanetTile {
     pub(super) present_chunks: Vec<IVec3>,
     pub(super) present_min: IVec3,
     pub(super) present_max_exclusive: IVec3,
-    pub(super) tint: [u8; 3],
 }
 
 pub(super) fn planet_tiles() -> &'static [PlanetTile] {
@@ -52,7 +50,6 @@ fn build_planet_tiles() -> Vec<PlanetTile> {
             Vec3::new(-normal.z, 0.0, normal.x).normalize()
         };
         let axis_y = normal.cross(axis_x).normalize();
-        let tint = tile_tint(index);
 
         let mut neighbor_dots: Vec<(usize, f32)> = normals
             .iter()
@@ -90,7 +87,6 @@ fn build_planet_tiles() -> Vec<PlanetTile> {
             present_chunks,
             present_min,
             present_max_exclusive,
-            tint,
         });
     }
 
