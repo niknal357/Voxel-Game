@@ -30,7 +30,7 @@ voxel-gpu = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branc
 voxel-data = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
 voxel-edit = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
 voxel-physics = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
-voxel-renderer = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
+voxel-engine = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
 voxel-sources = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
 voxel-streaming = { git = "https://github.com/ItchyTrack/Voxel-Game-Engine.git", branch = "main" }
 
