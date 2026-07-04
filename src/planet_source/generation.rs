@@ -106,28 +106,33 @@ fn append_planet_samples(
             columns_in_shape += 1;
             z_candidates += (z1 - z0) as usize;
 
-            let lateral_len_sq = sample_x * sample_x + sample_y * sample_y;
+            // let lateral_len_sq = sample_x * sample_x + sample_y * sample_y;
 
             for z in z0..z1 {
-                let sample_z = sample_base_z + z as f32 * step_f;
-                let radial = PLANET_RADIUS + sample_z;
-                let radius = (lateral_len_sq + radial * radial).sqrt();
-                if radius <= 1e-5 {
-                    continue;
-                }
+                // let sample_z = sample_base_z + z as f32 * step_f;
+                // let radial = PLANET_RADIUS + sample_z;
+                // let radius = (lateral_len_sq + radial * radial).sqrt();
+                // if radius <= 1e-5 {
+                //     continue;
+                // }
 
-                let unit = local_unit_to_planet(tile, sample_x, sample_y, radial, radius);
-                terrain_samples += 1;
-                let terrain = terrain_sample(unit);
-                let altitude = radius - PLANET_RADIUS;
-                if altitude > terrain.height {
-                    continue;
-                }
+                // let unit = local_unit_to_planet(tile, sample_x, sample_y, radial, radius);
+                // terrain_samples += 1;
+                // let terrain = terrain_sample(unit);
+                // let altitude = radius - PLANET_RADIUS;
+                // if altitude > terrain.height {
+                //     continue;
+                // }
 
                 points.push((
                     IVec3::new(x, y, z).as_u16vec3(),
                     Voxel {
-                        color: terrain_color(terrain, altitude),
+                        color: [
+                            200,
+                            100,
+                            30,
+                            255
+                        ],
                         mass,
                     },
                 ));
