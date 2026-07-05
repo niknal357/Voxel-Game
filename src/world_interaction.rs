@@ -5,6 +5,8 @@ use bevy::transform::components::{GlobalTransform, Transform};
 use voxel_data::world_query::VoxelWorldQueryParam;
 use voxel_physics::{CenterOfMass, FreezePhysics, Impulses, IsStatic, Mass, PhysicsSet, Velocity};
 
+use crate::objects::ShipVoxelGrid;
+
 pub(crate) struct WorldInteractionPlugin;
 
 impl Plugin for WorldInteractionPlugin {
@@ -38,6 +40,7 @@ fn pickup_toggle_system(
 	keys: Res<ButtonInput<KeyCode>>,
 	cameras: Query<(&Camera, &GlobalTransform), With<Camera3d>>,
 	voxel_world: VoxelWorldQueryParam,
+	ship_grids: Query<(), With<ShipVoxelGrid>>,
 	parents: Query<&ChildOf>,
 	bodies: Query<Has<IsStatic>, With<voxel_physics::RigidBody>>,
 	mut held: ResMut<HeldBody>,
@@ -57,6 +60,9 @@ fn pickup_toggle_system(
 	let Some(hit) = voxel_world.raycast(origin, dir, None) else {
 		return;
 	};
+	if ship_grids.contains(hit.grid) {
+		return;
+	}
 	let Ok(child_of) = parents.get(hit.grid) else {
 		return;
 	};

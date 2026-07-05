@@ -1,7 +1,7 @@
 use std::sync::{Arc, OnceLock};
 
 use bevy::camera::Hdr;
-use bevy::input::mouse::AccumulatedMouseMotion;
+use bevy::input::mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll, MouseScrollUnit};
 use bevy::math::U16Vec3;
 use bevy::prelude::*;
 use bevy::render::view::Msaa;
@@ -36,15 +36,15 @@ const SPAWN_FORWARD_OFFSET: f32 = -160.0;
 const MAIN_THRUST_ACCEL: f32 = 900.0;
 const BOOST_THRUST_ACCEL: f32 = 2_200.0;
 const STRAFE_THRUST_ACCEL: f32 = 700.0;
+const DAMPENING_ACCEL: f32 = 900.0;
+const CIRCULARIZE_ACCEL: f32 = 1_200.0;
+const CIRCULARIZE_DONE_DELTA_V: f32 = 16.0;
 
 const KEY_TURN_RATE: f32 = 1.8;
 const MOUSE_TURN_RATE_PER_PIXEL: f32 = 0.045;
 const MAX_TARGET_TURN_RATE: f32 = 3.0;
 const ANGULAR_ACCEL: f32 = 18.0;
 
-const HOVER_ASSIST_RANGE: f32 = 192.0;
-const HOVER_TARGET_ALTITUDE: f32 = 56.0;
-const HOVER_MAX_ACCEL: f32 = 650.0;
 const GROUND_RAY_CLEARANCE: f32 = 48.0;
 const GROUND_RAY_MAX_DISTANCE: f32 = 768.0;
 
@@ -52,8 +52,10 @@ const COCKPIT_CAMERA_OFFSET: Vec3 = Vec3::new(0.0, 8.0, -58.0);
 const ORBIT_FOCUS_OFFSET: Vec3 = Vec3::new(0.0, 4.0, -6.0);
 const ORBIT_DEFAULT_DISTANCE: f32 = 170.0;
 const ORBIT_MIN_DISTANCE: f32 = 60.0;
-const ORBIT_MAX_DISTANCE: f32 = 420.0;
+const ORBIT_MAX_DISTANCE: f32 = 900.0;
 const ORBIT_PITCH_LIMIT: f32 = 1.25;
+const ORBIT_SCROLL_ZOOM_PER_LINE: f32 = 0.12;
+const ORBIT_SCROLL_ZOOM_PER_PIXEL: f32 = 0.002;
 
 pub(crate) struct SpaceshipPlugin;
 
@@ -138,7 +140,7 @@ struct Spaceship;
 struct SpaceshipCamera;
 
 #[derive(Component)]
-struct ShipVoxelGrid;
+pub(crate) struct ShipVoxelGrid;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum CameraMode {
@@ -166,7 +168,7 @@ struct SpaceshipCameraRig {
 impl Default for SpaceshipCameraRig {
 	fn default() -> Self {
 		Self {
-			mode: CameraMode::Cockpit,
+			mode: CameraMode::Orbit,
 			orbit_yaw: 0.0,
 			orbit_pitch: 0.25,
 			orbit_distance: ORBIT_DEFAULT_DISTANCE,
@@ -180,7 +182,8 @@ struct SpaceshipInput {
 	look_delta: Vec2,
 	keyboard_turn: Vec3,
 	boost: bool,
-	hover_assist: bool,
+	gravity_assist: bool,
+	velocity_dampening: bool,
 }
 
 impl Default for SpaceshipInput {
@@ -190,7 +193,8 @@ impl Default for SpaceshipInput {
 			look_delta: Vec2::ZERO,
 			keyboard_turn: Vec3::ZERO,
 			boost: false,
-			hover_assist: true,
+			gravity_assist: true,
+			velocity_dampening: true,
 		}
 	}
 }
@@ -198,6 +202,7 @@ impl Default for SpaceshipInput {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SpaceshipAutopilotMode {
 	Manual,
+	Circularize,
 }
 
 #[derive(Resource, Debug, Clone, Copy)]
@@ -232,7 +237,8 @@ struct SpaceshipTelemetry {
 	periapsis_altitude: Option<f32>,
 	circular_speed: f32,
 	eccentricity: Option<f32>,
-	hover_assist_active: bool,
+	gravity_assist_active: bool,
+	velocity_dampening_active: bool,
 	camera_mode: CameraMode,
 }
 
@@ -248,8 +254,9 @@ impl Default for SpaceshipTelemetry {
 			periapsis_altitude: None,
 			circular_speed: 0.0,
 			eccentricity: None,
-			hover_assist_active: true,
-			camera_mode: CameraMode::Cockpit,
+			gravity_assist_active: true,
+			velocity_dampening_active: true,
+			camera_mode: CameraMode::Orbit,
 		}
 	}
 }
@@ -297,8 +304,10 @@ fn spawn_spaceship(mut commands: Commands, grid: Res<SpaceshipGrid>) {
 fn collect_spaceship_input(
 	keys: Res<ButtonInput<KeyCode>>,
 	mouse_motion: Res<AccumulatedMouseMotion>,
+	mouse_scroll: Res<AccumulatedMouseScroll>,
 	cursor_options: Query<&CursorOptions, With<PrimaryWindow>>,
 	mut input: ResMut<SpaceshipInput>,
+	mut autopilot: ResMut<SpaceshipAutopilot>,
 	mut camera_rig: ResMut<SpaceshipCameraRig>,
 ) {
 	let mut thrust = Vec3::ZERO;
@@ -324,7 +333,20 @@ fn collect_spaceship_input(
 	input.boost = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
 
 	if keys.just_pressed(KeyCode::KeyH) {
-		input.hover_assist = !input.hover_assist;
+		input.gravity_assist = !input.gravity_assist;
+	}
+	if keys.just_pressed(KeyCode::KeyV) {
+		input.velocity_dampening = !input.velocity_dampening;
+	}
+	if keys.just_pressed(KeyCode::KeyO) {
+		autopilot.mode = match autopilot.mode {
+			SpaceshipAutopilotMode::Manual => {
+				input.gravity_assist = false;
+				input.velocity_dampening = false;
+				SpaceshipAutopilotMode::Circularize
+			}
+			SpaceshipAutopilotMode::Circularize => SpaceshipAutopilotMode::Manual,
+		};
 	}
 	if keys.just_pressed(KeyCode::KeyC) {
 		camera_rig.mode = match camera_rig.mode {
@@ -383,6 +405,16 @@ fn collect_spaceship_input(
 			camera_rig.orbit_yaw -= mouse_delta.x * 0.006;
 			camera_rig.orbit_pitch = (camera_rig.orbit_pitch - mouse_delta.y * 0.006)
 				.clamp(-ORBIT_PITCH_LIMIT, ORBIT_PITCH_LIMIT);
+
+			let zoom_per_unit = match mouse_scroll.unit {
+				MouseScrollUnit::Line => ORBIT_SCROLL_ZOOM_PER_LINE,
+				MouseScrollUnit::Pixel => ORBIT_SCROLL_ZOOM_PER_PIXEL,
+			};
+			if mouse_scroll.delta.y.abs() > f32::EPSILON {
+				let factor = (1.0 - mouse_scroll.delta.y * zoom_per_unit).max(0.25);
+				camera_rig.orbit_distance = (camera_rig.orbit_distance * factor)
+					.clamp(ORBIT_MIN_DISTANCE, ORBIT_MAX_DISTANCE);
+			}
 		}
 	}
 }
@@ -391,8 +423,7 @@ fn fly_spaceship_system(
 	time: Res<Time>,
 	gravity: Res<PlanetGravity>,
 	mut input: ResMut<SpaceshipInput>,
-	autopilot: Res<SpaceshipAutopilot>,
-	voxel_world: VoxelWorldQueryParam<Without<ShipVoxelGrid>>,
+	mut autopilot: ResMut<SpaceshipAutopilot>,
 	mut accelerations: ResMut<Accelerations>,
 	mut impulses: ResMut<Impulses>,
 	ships: Query<
@@ -420,29 +451,51 @@ fn fly_spaceship_system(
 		let up = transform.up().as_vec3();
 
 		let local = input.thrust;
-		if matches!(autopilot.mode, SpaceshipAutopilotMode::Manual) {
-			let thrust_accel = if input.boost {
-				BOOST_THRUST_ACCEL
-			} else {
-				MAIN_THRUST_ACCEL
-			};
-			let accel = right * (local.x * STRAFE_THRUST_ACCEL)
-				+ up * (local.y * STRAFE_THRUST_ACCEL)
-				+ forward * (local.z * thrust_accel);
-			if accel != Vec3::ZERO {
-				accelerations.apply_central_acceleration(entity, accel);
-			}
-		}
+		match autopilot.mode {
+			SpaceshipAutopilotMode::Manual => {
+				let thrust_accel = if input.boost {
+					BOOST_THRUST_ACCEL
+				} else {
+					MAIN_THRUST_ACCEL
+				};
+				let accel = right * (local.x * STRAFE_THRUST_ACCEL)
+					+ up * (local.y * STRAFE_THRUST_ACCEL)
+					+ forward * (local.z * thrust_accel);
+				if accel != Vec3::ZERO {
+					accelerations.apply_central_acceleration(entity, accel);
+				}
 
-		if input.hover_assist {
-			if let Some(hover_accel) = hover_assist_acceleration(
-				&voxel_world,
-				gravity.center,
-				transform.translation,
-				velocity.0,
-				local.y,
-			) {
-				accelerations.apply_central_acceleration(entity, hover_accel);
+				if input.gravity_assist {
+					if let Some(gravity_accel) = planet_gravity_acceleration(&gravity, transform.translation) {
+						accelerations.apply_central_acceleration(entity, -gravity_accel);
+					}
+				}
+
+				if input.velocity_dampening {
+					let unwanted_velocity = dampened_velocity(velocity.0, right, up, forward, local);
+					if unwanted_velocity.length_squared() > 1e-6 {
+						let dampening_accel =
+							(-unwanted_velocity / dt).clamp_length_max(DAMPENING_ACCEL);
+						accelerations.apply_central_acceleration(entity, dampening_accel);
+					}
+				}
+			}
+			SpaceshipAutopilotMode::Circularize => {
+				let mu = gravity.acceleration * gravity.reference_distance.powi(2);
+				if let Some((circularize_accel, done)) = circularize_acceleration(
+					gravity.center,
+					transform.translation,
+					velocity.0,
+					forward,
+					mu,
+					dt,
+				) {
+					if done {
+						autopilot.mode = SpaceshipAutopilotMode::Manual;
+					} else {
+						accelerations.apply_central_acceleration(entity, circularize_accel);
+					}
+				}
 			}
 		}
 
@@ -534,7 +587,8 @@ fn update_spaceship_telemetry(
 		periapsis_altitude,
 		circular_speed,
 		eccentricity,
-		hover_assist_active: input.hover_assist,
+		gravity_assist_active: input.gravity_assist,
+		velocity_dampening_active: input.velocity_dampening,
 		camera_mode: camera_rig.mode,
 	};
 }
@@ -548,14 +602,22 @@ fn spaceship_hud(
 
 	egui::Window::new("Ship")
 		.default_pos([8.0, 8.0])
-		.default_size([245.0, 180.0])
+		.default_size([265.0, 210.0])
 		.resizable(false)
 		.show(ctx, |ui| {
 			ui.label(format!("Camera: {} (C)", telemetry.camera_mode.label()));
 			ui.label(format!("Autopilot: {:?}", autopilot.mode));
 			ui.label(format!(
-				"Hover assist: {} (H)",
-				if telemetry.hover_assist_active {
+				"Gravity assist: {} (H)",
+				if telemetry.gravity_assist_active {
+					"on"
+				} else {
+					"off"
+				}
+			));
+			ui.label(format!(
+				"Velocity dampening: {} (V)",
+				if telemetry.velocity_dampening_active {
 					"on"
 				} else {
 					"off"
@@ -609,44 +671,81 @@ fn spaceship_hud(
 			ui.separator();
 			ui.label("WASD/Space/Ctrl thrust, Shift boost");
 			ui.label("Mouse or arrows turn, Q/E roll");
-			ui.label("Orbit cam: mouse orbit, [/] zoom, R reset");
+			ui.label("O circularize, H gravity, V dampening");
+			ui.label("Orbit cam: mouse orbit, brackets/wheel zoom, R reset");
 		});
 
 	Ok(())
 }
 
-fn hover_assist_acceleration(
-	voxel_world: &VoxelWorldQueryParam<Without<ShipVoxelGrid>>,
+fn dampened_velocity(
+	velocity: Vec3,
+	right: Vec3,
+	up: Vec3,
+	forward: Vec3,
+	local_input: Vec3,
+) -> Vec3 {
+	let mut unwanted = velocity;
+	for (axis, input) in [
+		(right, local_input.x),
+		(up, local_input.y),
+		(forward, local_input.z),
+	] {
+		if input.abs() <= 0.1 {
+			continue;
+		}
+
+		let speed_on_axis = velocity.dot(axis);
+		if speed_on_axis.signum() == input.signum() {
+			unwanted -= axis * speed_on_axis;
+		}
+	}
+	unwanted
+}
+
+fn planet_gravity_acceleration(gravity: &PlanetGravity, position: Vec3) -> Option<Vec3> {
+	let to_center = gravity.center - position;
+	let distance_squared = to_center.length_squared();
+	if distance_squared <= f32::EPSILON {
+		return None;
+	}
+
+	let acceleration = gravity.acceleration * gravity.reference_distance.powi(2) / distance_squared;
+	Some(to_center.normalize() * acceleration)
+}
+
+fn circularize_acceleration(
 	gravity_center: Vec3,
 	position: Vec3,
 	velocity: Vec3,
-	vertical_input: f32,
-) -> Option<Vec3> {
-	let down = (gravity_center - position).normalize_or_zero();
-	if down == Vec3::ZERO {
-		return None;
-	}
-	let up = -down;
-	let altitude = ground_altitude(voxel_world, gravity_center, position)
-		.unwrap_or_else(|| (position - gravity_center).length() - PLANET_RADIUS);
-	if !(0.0..HOVER_ASSIST_RANGE).contains(&altitude) {
+	ship_forward: Vec3,
+	mu: f32,
+	dt: f32,
+) -> Option<(Vec3, bool)> {
+	let r_vec = position - gravity_center;
+	let radius = r_vec.length();
+	if radius <= f32::EPSILON || mu <= f32::EPSILON || dt <= 0.0 {
 		return None;
 	}
 
-	let strength = 1.0 - altitude / HOVER_ASSIST_RANGE;
-	let pilot_override = if vertical_input.abs() > 0.1 {
-		0.30
+	let up = r_vec / radius;
+	let radial_velocity = up * velocity.dot(up);
+	let horizontal_velocity = velocity - radial_velocity;
+	let tangent_dir = if horizontal_velocity.length_squared() > 1.0 {
+		horizontal_velocity.normalize()
 	} else {
-		1.0
+		let projected_forward = ship_forward - up * ship_forward.dot(up);
+		if projected_forward.length_squared() > 1e-6 {
+			projected_forward.normalize()
+		} else {
+			up.any_orthonormal_vector()
+		}
 	};
-	let vertical_speed = velocity.dot(up);
-	let altitude_error = HOVER_TARGET_ALTITUDE - altitude;
-	let accel_mag = (altitude_error * 6.0 - vertical_speed * 4.0)
-		.clamp(-HOVER_MAX_ACCEL, HOVER_MAX_ACCEL)
-		* strength
-		* pilot_override;
 
-	Some(up * accel_mag)
+	let target_velocity = tangent_dir * (mu / radius).sqrt();
+	let delta_v = target_velocity - velocity;
+	let done = delta_v.length() <= CIRCULARIZE_DONE_DELTA_V;
+	Some(((delta_v / dt).clamp_length_max(CIRCULARIZE_ACCEL), done))
 }
 
 fn ground_altitude(

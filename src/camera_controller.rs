@@ -3,8 +3,6 @@ use bevy::prelude::*;
 use bevy::window::{CursorGrabMode, CursorOptions, PrimaryWindow};
 use bevy_egui::input::EguiWantsInput;
 
-use crate::planet_source::PLANET_RADIUS;
-
 #[derive(Component)]
 pub struct FlyCamera {
 	speed: f32,
