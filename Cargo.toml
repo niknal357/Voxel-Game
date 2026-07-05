@@ -6,16 +6,16 @@ edition = "2024"
 [features]
 default = []
 tracy = [
-    "dep:tracing-tracy",
-    "bevy/debug",
-    "bevy/trace",
-    "voxel-data/tracy",
-    "voxel-edit/tracy",
-    "voxel-physics/tracy",
-    "voxel-gpu/tracy",
-    "voxel-sources/tracy",
-    "voxel-streaming/tracy",
-    "tracy-client/enable",
+	"dep:tracing-tracy",
+	"bevy/debug",
+	"bevy/trace",
+	"voxel-data/tracy",
+	"voxel-edit/tracy",
+	"voxel-physics/tracy",
+	"voxel-gpu/tracy",
+	"voxel-sources/tracy",
+	"voxel-streaming/tracy",
+	"tracy-client/enable",
 ]
 
 [dependencies]

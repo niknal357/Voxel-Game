@@ -12,17 +12,17 @@ use crate::world_interaction::WorldInteractionPlugin;
 pub struct GamePlugins;
 
 impl PluginGroup for GamePlugins {
-    fn build(self) -> PluginGroupBuilder {
-        PluginGroupBuilder::start::<Self>()
-            .add_group(VoxelEnginePlugins {
-                mode: VoxelEngineMode::Host,
-            })
-            .add(GravityPlugin)
-            // .add(ProceduralSpherePlugin)
-            .add(ProceduralPlanetPlugin)
-            .add(BallPlugin)
-            .add(SpaceshipPlugin)
-            .add(FlyCameraPlugin)
-            .add(WorldInteractionPlugin)
-    }
+	fn build(self) -> PluginGroupBuilder {
+		PluginGroupBuilder::start::<Self>()
+			.add_group(VoxelEnginePlugins {
+				mode: VoxelEngineMode::Host,
+			})
+			.add(GravityPlugin)
+			// .add(ProceduralSpherePlugin)
+			.add(ProceduralPlanetPlugin)
+			.add(BallPlugin)
+			.add(SpaceshipPlugin)
+			.add(FlyCameraPlugin)
+			.add(WorldInteractionPlugin)
+	}
 }
