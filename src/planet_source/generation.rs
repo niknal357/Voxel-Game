@@ -5,7 +5,7 @@ use voxel_data::voxels::{Voxel, Voxels};
 use voxel_streaming::{CHUNK_SIZE, chunk_origin};
 
 use super::config::{PLANET_RADIUS, TILE_INWARD_DEPTH, TILE_OUTWARD_HEIGHT, TILE_SHAPE_EPSILON};
-use super::terrain::{terrain_color, terrain_sample};
+use super::terrain::terrain_height;
 use super::tiles::{PlanetTile, planet_tiles};
 
 pub(super) fn build_planet_chunk(tile_index: usize, chunk: IVec3) -> Option<Voxels> {
@@ -27,34 +27,35 @@ pub(super) fn build_planet_chunk(tile_index: usize, chunk: IVec3) -> Option<Voxe
 }
 
 pub(super) fn build_planet_lod_region(
-	tile_index: usize,
-	min_chunk: IVec3,
-	size_chunks: IVec3,
-	lod: f32,
+	_tile_index: usize,
+	_min_chunk: IVec3,
+	_size_chunks: IVec3,
+	_lod: f32,
 ) -> Option<Voxels> {
-	let _zone = span!("planet build lod region");
-	let tile = planet_tiles().get(tile_index)?;
-	let step = 1i32 << lod.max(0.0).floor() as u32;
-	let sample_offset = step / 2;
-	let extent = (size_chunks * CHUNK_SIZE) / step;
-	let origin = chunk_origin(min_chunk);
-	let mut points = Vec::new();
-	tracy_client::plot!("planet lod step", step as f64);
-	tracy_client::plot!(
-		"planet lod source chunks",
-		(size_chunks.x * size_chunks.y * size_chunks.z) as f64
-	);
-	append_planet_samples(
-		tile,
-		origin,
-		extent,
-		step,
-		sample_offset,
-		false,
-		&mut points,
-	);
-	tracy_client::plot!("planet lod emitted voxels", points.len() as f64);
-	points_to_voxels(points)
+	// let _zone = span!("planet build lod region");
+	// let tile = planet_tiles().get(tile_index)?;
+	// let step = 1i32 << lod.max(0.0).floor() as u32;
+	// let sample_offset = step / 2;
+	// let extent = (size_chunks * CHUNK_SIZE) / step;
+	// let origin = chunk_origin(min_chunk);
+	// let mut points = Vec::new();
+	// tracy_client::plot!("planet lod step", step as f64);
+	// tracy_client::plot!(
+	// 	"planet lod source chunks",
+	// 	(size_chunks.x * size_chunks.y * size_chunks.z) as f64
+	// );
+	// append_planet_samples(
+	// 	tile,
+	// 	origin,
+	// 	extent,
+	// 	step,
+	// 	sample_offset,
+	// 	false,
+	// 	&mut points,
+	// );
+	// tracy_client::plot!("planet lod emitted voxels", points.len() as f64);
+	// points_to_voxels(points)
+	None
 }
 
 fn points_to_voxels(points: Vec<(U16Vec3, Voxel)>) -> Option<Voxels> {
@@ -113,16 +114,16 @@ fn append_planet_samples(
 			z_candidates += (z1 - z0) as usize;
 
 			let surface_planet_pos = sample_surface_planet_pos(tile, sample_x, sample_y);
-			let terrain = terrain_sample(surface_planet_pos);
+			let terrain_height = terrain_height(surface_planet_pos);
 			terrain_samples += 1;
-			let color = terrain_color(terrain, surface_planet_pos);
+			let color = [128, 128, 128, 255];
 			let z1 = z1.min(column_terrain_top_z(
 				sample_x,
 				sample_y,
 				sample_base_z,
 				step_f,
 				extent.z,
-				terrain.height,
+				terrain_height,
 			));
 
 			for z in z0..z1 {

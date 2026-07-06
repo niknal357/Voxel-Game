@@ -22,6 +22,7 @@ pub(crate) struct BallPlugin;
 
 impl Plugin for BallPlugin {
 	fn build(&self, app: &mut App) {
+		return;
 		let grid = Arc::new(OnceLock::new());
 		app.register_source(BallSource {
 			grid: grid.clone(),
