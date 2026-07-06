@@ -175,7 +175,7 @@ fn build_heightmap_patch(
 	let center_local = origin.as_vec3() + source_size.as_vec3() * 0.5;
 	let mut patch_normal = local_to_planet(tile, center_local).normalize_or_zero();
 	if patch_normal.length_squared() < 0.5 {
-		patch_normal = tile.normal;
+		patch_normal = tile.site_normal;
 	}
 	let patch_center = patch_normal * PLANET_RADIUS;
 	let (patch_x, patch_y) = tangent_basis(patch_normal);
@@ -507,17 +507,17 @@ fn planet_normal_in_local(tile: &PlanetTile, normal: Vec3) -> Vec3 {
 	Vec3::new(
 		normal.dot(tile.axis_x),
 		normal.dot(tile.axis_y),
-		normal.dot(tile.normal),
+		normal.dot(tile.axis_z),
 	)
 }
 
 fn local_to_planet(tile: &PlanetTile, p: Vec3) -> Vec3 {
-	tile.origin + tile.axis_x * p.x + tile.axis_y * p.y + tile.normal * p.z
+	tile.origin + tile.axis_x * p.x + tile.axis_y * p.y + tile.axis_z * p.z
 }
 
 fn planet_to_local(tile: &PlanetTile, p: Vec3) -> Vec3 {
 	let d = p - tile.origin;
-	Vec3::new(d.dot(tile.axis_x), d.dot(tile.axis_y), d.dot(tile.normal))
+	Vec3::new(d.dot(tile.axis_x), d.dot(tile.axis_y), d.dot(tile.axis_z))
 }
 
 fn planet_center_in_local(tile: &PlanetTile) -> Vec3 {

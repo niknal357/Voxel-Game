@@ -101,7 +101,7 @@ fn spawn_planet(mut commands: Commands, grids: Res<PlanetGridMap>) {
 			streaming.presence_mut().mark_present_area(min, size);
 		}
 
-		let rotation = Quat::from_mat3(&Mat3::from_cols(tile.axis_x, tile.axis_y, tile.normal));
+		let rotation = Quat::from_mat3(&Mat3::from_cols(tile.axis_x, tile.axis_y, tile.axis_z));
 		let transform = Transform {
 			translation: tile.origin,
 			rotation,

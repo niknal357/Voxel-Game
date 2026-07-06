@@ -1,6 +1,7 @@
 use voxel_streaming::CHUNK_SIZE;
 
 pub(super) const PLANET_TILE_COUNT: usize = 1024;
+pub(super) const RANDOM_PLANET_TILE_ORIENTATION: bool = true;
 pub(crate) const PLANET_RADIUS: f32 = 1024.0 * 32.0;
 pub(super) const PLANET_COST: u32 = 1;
 

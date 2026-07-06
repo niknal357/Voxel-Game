@@ -6,8 +6,8 @@ use tracy_client::span;
 use voxel_streaming::{CHUNK_SIZE, chunk_of, chunk_origin};
 
 use super::config::{
-	PLANET_RADIUS, PLANET_TILE_COUNT, TILE_BOUND_PADDING, TILE_INWARD_DEPTH, TILE_OUTWARD_HEIGHT,
-	TILE_SHAPE_EPSILON, VORONOI_NEIGHBORS,
+	PLANET_RADIUS, PLANET_TILE_COUNT, RANDOM_PLANET_TILE_ORIENTATION, TILE_BOUND_PADDING,
+	TILE_INWARD_DEPTH, TILE_OUTWARD_HEIGHT, TILE_SHAPE_EPSILON, VORONOI_NEIGHBORS,
 };
 
 #[derive(Debug, Clone)]
@@ -20,10 +20,11 @@ pub(super) struct Halfspace {
 #[derive(Debug, Clone)]
 pub(super) struct PlanetTile {
 	pub(super) index: usize,
-	pub(super) normal: Vec3,
+	pub(super) site_normal: Vec3,
 	pub(super) origin: Vec3,
 	pub(super) axis_x: Vec3,
 	pub(super) axis_y: Vec3,
+	pub(super) axis_z: Vec3,
 	pub(super) halfspaces: Vec<Halfspace>,
 	pub(super) present_chunks: Vec<IVec3>,
 	pub(super) present_areas: Vec<(IVec3, IVec3)>,
@@ -44,13 +45,17 @@ fn build_planet_tiles() -> Vec<PlanetTile> {
 		.collect();
 
 	let mut tiles = Vec::with_capacity(PLANET_TILE_COUNT);
+	let random_seed = std::time::SystemTime::now()
+		.duration_since(std::time::UNIX_EPOCH)
+		.map(|duration| duration.subsec_nanos())
+		.unwrap_or(0);
 	for (index, &normal) in normals.iter().enumerate() {
-		let axis_x = if normal.x.abs() < 1e-6 && normal.z.abs() < 1e-6 {
-			Vec3::X
+		let (radial_axis_x, radial_axis_y) = radial_tangent_basis(normal);
+		let (axis_x, axis_y, axis_z) = if RANDOM_PLANET_TILE_ORIENTATION {
+			random_orientation(index, random_seed)
 		} else {
-			Vec3::new(-normal.z, 0.0, normal.x).normalize()
+			(radial_axis_x, radial_axis_y, normal)
 		};
-		let axis_y = normal.cross(axis_x).normalize();
 
 		let mut neighbor_dots: Vec<(usize, f32)> = normals
 			.iter()
@@ -73,18 +78,44 @@ fn build_planet_tiles() -> Vec<PlanetTile> {
 		let halfspaces: Vec<_> = neighbor_dots
 			.iter()
 			.take(VORONOI_NEIGHBORS)
-			.map(|&(other, _)| voronoi_halfspace(normal, normals[other], axis_x, axis_y))
+			.map(|&(other, _)| {
+				voronoi_halfspace(normal, normals[other], normal * PLANET_RADIUS, axis_x, axis_y, axis_z)
+			})
 			.collect();
-		let present_chunks = build_present_chunks(&halfspaces);
+		let radial_halfspaces: Vec<_> = neighbor_dots
+			.iter()
+			.take(VORONOI_NEIGHBORS)
+			.map(|&(other, _)| {
+				voronoi_halfspace(
+					normal,
+					normals[other],
+					normal * PLANET_RADIUS,
+					radial_axis_x,
+					radial_axis_y,
+					normal,
+				)
+			})
+			.collect();
+		let present_chunks = build_present_chunks(
+			normal,
+			radial_axis_x,
+			radial_axis_y,
+			axis_x,
+			axis_y,
+			axis_z,
+			&halfspaces,
+			&radial_halfspaces,
+		);
 		let present_areas = compress_present_chunks(&present_chunks);
 		let (present_min, present_max_exclusive) = chunk_bounds(&present_chunks);
 
 		tiles.push(PlanetTile {
 			index,
-			normal,
+			site_normal: normal,
 			origin: normal * PLANET_RADIUS,
 			axis_x,
 			axis_y,
+			axis_z,
 			halfspaces,
 			present_chunks,
 			present_areas,
@@ -119,36 +150,93 @@ fn fibonacci_sphere_point(index: usize, count: usize) -> Vec3 {
 	Vec3::new(h.cos() * radius, y, h.sin() * radius).normalize()
 }
 
+fn radial_tangent_basis(normal: Vec3) -> (Vec3, Vec3) {
+	let axis_x = if normal.x.abs() < 1e-6 && normal.z.abs() < 1e-6 {
+		Vec3::X
+	} else {
+		Vec3::new(-normal.z, 0.0, normal.x).normalize()
+	};
+	(axis_x, normal.cross(axis_x).normalize())
+}
+
+fn random_orientation(index: usize, seed: u32) -> (Vec3, Vec3, Vec3) {
+	let u1 = hash_unit_float(seed ^ (index as u32).wrapping_mul(0x9e37_79b9));
+	let u2 = hash_unit_float(seed ^ (index as u32).wrapping_mul(0x85eb_ca6b) ^ 1);
+	let u3 = hash_unit_float(seed ^ (index as u32).wrapping_mul(0xc2b2_ae35) ^ 2);
+	let a = (1.0 - u1).sqrt();
+	let b = u1.sqrt();
+	let theta = 2.0 * PI * u2;
+	let phi = 2.0 * PI * u3;
+	let q = Quat::from_xyzw(a * theta.sin(), a * theta.cos(), b * phi.sin(), b * phi.cos());
+	(q * Vec3::X, q * Vec3::Y, q * Vec3::Z)
+}
+
+fn hash_unit_float(mut x: u32) -> f32 {
+	x ^= x >> 16;
+	x = x.wrapping_mul(0x7feb_352d);
+	x ^= x >> 15;
+	x = x.wrapping_mul(0x846c_a68b);
+	x ^= x >> 16;
+	x as f32 / u32::MAX as f32
+}
+
 fn voronoi_halfspace(
 	tile_normal: Vec3,
 	neighbor_normal: Vec3,
+	origin: Vec3,
 	axis_x: Vec3,
 	axis_y: Vec3,
+	axis_z: Vec3,
 ) -> Halfspace {
 	let diff = tile_normal - neighbor_normal;
 	Halfspace {
-		normal: Vec3::new(diff.dot(axis_x), diff.dot(axis_y), diff.dot(tile_normal)),
-		offset: diff.dot(tile_normal * PLANET_RADIUS),
+		normal: Vec3::new(diff.dot(axis_x), diff.dot(axis_y), diff.dot(axis_z)),
+		offset: diff.dot(origin),
 	}
 }
 
-fn build_present_chunks(halfspaces: &[Halfspace]) -> Vec<IVec3> {
-	let (min_xy, max_xy) = voronoi_xy_bounds(halfspaces);
+fn build_present_chunks(
+	site_normal: Vec3,
+	radial_axis_x: Vec3,
+	radial_axis_y: Vec3,
+	axis_x: Vec3,
+	axis_y: Vec3,
+	axis_z: Vec3,
+	halfspaces: &[Halfspace],
+	radial_halfspaces: &[Halfspace],
+) -> Vec<IVec3> {
+	// The tile's generated volume is a Voronoi cell clipped to a spherical shell.
+	// Compute a conservative AABB in the radial frame first, then rotate that AABB
+	// into this tile's arbitrary voxel-grid frame. Local Z may point anywhere.
+	let (min_xy, max_xy) = voronoi_xy_bounds(radial_halfspaces);
 	let padded_min_xy = min_xy - Vec2::splat(TILE_BOUND_PADDING as f32);
 	let padded_max_xy = max_xy + Vec2::splat(TILE_BOUND_PADDING as f32);
-	let min_local_z =
-		conservative_min_local_z(padded_min_xy, padded_max_xy, -TILE_INWARD_DEPTH as f32).floor()
-			as i32
-			- CHUNK_SIZE;
-	let min_voxel = IVec3::new(
-		padded_min_xy.x.floor() as i32,
-		padded_min_xy.y.floor() as i32,
-		min_local_z,
+	let min_radial_z =
+		conservative_min_local_z(padded_min_xy, padded_max_xy, -TILE_INWARD_DEPTH as f32)
+			- CHUNK_SIZE as f32;
+	let min_radial = Vec3::new(padded_min_xy.x, padded_min_xy.y, min_radial_z);
+	let max_radial = Vec3::new(
+		padded_max_xy.x,
+		padded_max_xy.y,
+		TILE_OUTWARD_HEIGHT as f32,
 	);
-	let max_voxel_exclusive = IVec3::new(
-		padded_max_xy.x.ceil() as i32,
-		padded_max_xy.y.ceil() as i32,
-		TILE_OUTWARD_HEIGHT,
+	let (local_min, local_max) = local_bounds_for_radial_aabb(
+		min_radial,
+		max_radial,
+		radial_axis_x,
+		radial_axis_y,
+		site_normal,
+		axis_x,
+		axis_y,
+		axis_z,
+	);
+	let pad = Vec3::splat(CHUNK_SIZE as f32);
+	let min_voxel = floor_ivec3(local_min - pad);
+	let max_voxel_exclusive = ceil_ivec3(local_max + pad);
+	let planet_center_local = Vec3::new(
+		(-site_normal * PLANET_RADIUS).dot(axis_x),
+		(-site_normal * PLANET_RADIUS).dot(axis_y),
+		(-site_normal * PLANET_RADIUS).dot(axis_z),
 	);
 
 	let min_chunk = chunk_of(min_voxel);
@@ -158,7 +246,7 @@ fn build_present_chunks(halfspaces: &[Halfspace]) -> Vec<IVec3> {
 		for y in min_chunk.y..=max_chunk.y {
 			for z in min_chunk.z..=max_chunk.z {
 				let chunk = IVec3::new(x, y, z);
-				if chunk_intersects_tile_shape(halfspaces, chunk) {
+				if chunk_intersects_tile_shape(halfspaces, planet_center_local, chunk) {
 					chunks.push(chunk);
 				}
 			}
@@ -167,6 +255,43 @@ fn build_present_chunks(halfspaces: &[Halfspace]) -> Vec<IVec3> {
 	chunks.sort_by_key(|c| (c.x, c.y, c.z));
 	chunks.dedup();
 	chunks
+}
+
+fn local_bounds_for_radial_aabb(
+	min_radial: Vec3,
+	max_radial: Vec3,
+	radial_axis_x: Vec3,
+	radial_axis_y: Vec3,
+	radial_axis_z: Vec3,
+	axis_x: Vec3,
+	axis_y: Vec3,
+	axis_z: Vec3,
+) -> (Vec3, Vec3) {
+	let mut min = Vec3::splat(f32::INFINITY);
+	let mut max = Vec3::splat(f32::NEG_INFINITY);
+	for x in [min_radial.x, max_radial.x] {
+		for y in [min_radial.y, max_radial.y] {
+			for z in [min_radial.z, max_radial.z] {
+				let radial_delta = radial_axis_x * x + radial_axis_y * y + radial_axis_z * z;
+				let local = Vec3::new(
+					radial_delta.dot(axis_x),
+					radial_delta.dot(axis_y),
+					radial_delta.dot(axis_z),
+				);
+				min = min.min(local);
+				max = max.max(local);
+			}
+		}
+	}
+	(min, max)
+}
+
+fn floor_ivec3(v: Vec3) -> IVec3 {
+	IVec3::new(v.x.floor() as i32, v.y.floor() as i32, v.z.floor() as i32)
+}
+
+fn ceil_ivec3(v: Vec3) -> IVec3 {
+	IVec3::new(v.x.ceil() as i32, v.y.ceil() as i32, v.z.ceil() as i32)
 }
 
 fn compress_present_chunks(chunks: &[IVec3]) -> Vec<(IVec3, IVec3)> {
@@ -356,10 +481,20 @@ fn aabb_intersects(a_min: IVec3, a_max: IVec3, b_min: IVec3, b_max: IVec3) -> bo
 		&& a_max.z > b_min.z
 }
 
-fn chunk_intersects_tile_shape(halfspaces: &[Halfspace], chunk: IVec3) -> bool {
+fn chunk_intersects_tile_shape(
+	halfspaces: &[Halfspace],
+	planet_center_local: Vec3,
+	chunk: IVec3,
+) -> bool {
 	let min = chunk_origin(chunk).as_vec3();
 	let max = (chunk_origin(chunk) + IVec3::splat(CHUNK_SIZE)).as_vec3();
-	if min.z >= TILE_OUTWARD_HEIGHT as f32 {
+	let inner_radius = PLANET_RADIUS - TILE_INWARD_DEPTH as f32;
+	let outer_radius = PLANET_RADIUS + TILE_OUTWARD_HEIGHT as f32;
+
+	if aabb_min_distance_sq_to_point(min, max, planet_center_local) > outer_radius * outer_radius {
+		return false;
+	}
+	if aabb_max_distance_sq_to_point(min, max, planet_center_local) < inner_radius * inner_radius {
 		return false;
 	}
 
@@ -374,4 +509,29 @@ fn chunk_intersects_tile_shape(halfspaces: &[Halfspace], chunk: IVec3) -> bool {
 		);
 		h.normal.dot(p) + h.offset >= -CHUNK_SIZE as f32
 	})
+}
+
+fn aabb_min_distance_sq_to_point(min: Vec3, max: Vec3, point: Vec3) -> f32 {
+	point.distance_squared(point.clamp(min, max))
+}
+
+fn aabb_max_distance_sq_to_point(min: Vec3, max: Vec3, point: Vec3) -> f32 {
+	let p = Vec3::new(
+		if (point.x - min.x).abs() > (point.x - max.x).abs() {
+			min.x
+		} else {
+			max.x
+		},
+		if (point.y - min.y).abs() > (point.y - max.y).abs() {
+			min.y
+		} else {
+			max.y
+		},
+		if (point.z - min.z).abs() > (point.z - max.z).abs() {
+			min.z
+		} else {
+			max.z
+		},
+	);
+	point.distance_squared(p)
 }
