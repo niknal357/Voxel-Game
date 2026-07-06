@@ -41,7 +41,7 @@ fn main() {
 	.insert_resource(CameraVoxelLoaderDefaultSettings(
 		CameraVoxelLoaderSettings {
 			max_lod: 16,
-			near_radius_chunks: 10,
+			near_radius_chunks: 5,
 			rings_per_lod: 2,
 			..CameraVoxelLoaderSettings::default()
 		},
