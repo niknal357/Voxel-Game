@@ -8,8 +8,8 @@ pub(super) const PLANET_COST: u32 = 1;
 // Each tangent grid is clipped by the spherical Voronoi cell around its
 // Fibonacci point. These are only radial limits; x/y bounds are inferred from
 // the cached Voronoi halfspaces per tile.
-pub(super) const TILE_INWARD_DEPTH: i32 = 64;
-pub(super) const TILE_OUTWARD_HEIGHT: i32 = 320;
+pub(super) const TILE_INWARD_DEPTH: i32 = 3000;
+pub(super) const TILE_OUTWARD_HEIGHT: i32 = 512;
 pub(super) const TILE_BOUND_PADDING: i32 = CHUNK_SIZE * 2;
 pub(super) const VORONOI_NEIGHBORS: usize = 32;
 pub(super) const TERRAIN_HEIGHT: f32 = 200.0;

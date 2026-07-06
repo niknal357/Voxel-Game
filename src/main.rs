@@ -42,7 +42,7 @@ fn main() {
 		CameraVoxelLoaderSettings {
 			max_lod: 16,
 			near_radius_chunks: 3,
-			rings_per_lod: 2,
+			rings_per_lod: 3,
 			..CameraVoxelLoaderSettings::default()
 		},
 	))
