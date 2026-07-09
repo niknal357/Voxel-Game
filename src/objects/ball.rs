@@ -88,7 +88,7 @@ fn spawn_ball(mut commands: Commands, grid: Res<BallGrid>) {
 
 	let mut streaming = GridStreaming::default();
 	for chunk in ball_present_chunks() {
-		streaming.presence_mut().mark_present(chunk);
+		streaming.mark_present(chunk);
 	}
 
 	let grid_entity = commands

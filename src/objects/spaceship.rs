@@ -274,7 +274,7 @@ fn spawn_spaceship(mut commands: Commands, grid: Res<SpaceshipGrid>) {
 
 	let mut streaming = GridStreaming::default();
 	for chunk in ship_present_chunks() {
-		streaming.presence_mut().mark_present(chunk);
+		streaming.mark_present(chunk);
 	}
 
 	let grid_entity = commands
